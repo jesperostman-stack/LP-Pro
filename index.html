@@ -293,6 +293,118 @@ document.addEventListener('DOMContentLoaded',function(){
 </head>
 <body>
 
+<div class="loading-screen" id="loader">
+  <div class="spinner"></div>
+  <div class="loading-label">Ladataan…</div>
+</div>
+
+<!-- HEADER -->
+
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">🔥</div>
+    <div class="logo-text">LP <em>Pro</em></div>
+  </div>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('dealers',this)">🗺 Asentajat</button>
+    <button class="nav-tab" onclick="showPage('kohteet',this)">📍 Kohteet</button>
+    <button class="nav-tab" onclick="showPage('edit',this)">✏️ Muokkaa</button>
+  </nav>
+  <div class="header-right">
+    <div style="display:flex;align-items:center;gap:5px;">
+      <div class="dot" id="sync-dot"></div>
+      <span class="sync-label" id="sync-label">Yhdistetty</span>
+    </div>
+  </div>
+</header>
+
+<!-- KOHTEET FILTER BAR -->
+
+<div class="filter-bar" id="kohteet-filters" style="display:none;">
+  <div class="fb-chip">
+    <span class="fb-label">Tila</span>
+    <select class="fb-select" id="f-tila" onchange="applyKohteet()"><option value="">Kaikki tilat</option></select>
+  </div>
+  <div class="fb-chip">
+    <span class="fb-label">Kansio</span>
+    <select class="fb-select" id="f-kansio" onchange="applyKohteet()"><option value="">Kaikki kansiot</option></select>
+  </div>
+  <div class="fb-chip">
+    <span class="fb-label">Asentaja</span>
+    <select class="fb-select" id="f-asentaja" onchange="applyKohteet()" style="min-width:130px;"><option value="">Kaikki</option></select>
+  </div>
+  <div class="fb-divider"></div>
+  <div class="fb-chip">
+    <span class="fb-label">Vuosi</span>
+    <select class="fb-select" id="f-year" onchange="applyKohteet()" style="min-width:72px;"><option value="">Kaikki</option></select>
+  </div>
+  <div class="fb-chip">
+    <span class="fb-label">Kuukausi</span>
+    <select class="fb-select" id="f-month" onchange="applyKohteet()">
+      <option value="">Kaikki</option>
+      <option value="1">Tammi</option><option value="2">Helmi</option><option value="3">Maalis</option>
+      <option value="4">Huhti</option><option value="5">Touko</option><option value="6">Kesä</option>
+      <option value="7">Heinä</option><option value="8">Elo</option><option value="9">Syys</option>
+      <option value="10">Loka</option><option value="11">Marras</option><option value="12">Joulu</option>
+    </select>
+  </div>
+  <div class="fb-divider"></div>
+  <div class="fb-chip">
+    <span class="fb-label">Kal. työ alkaen</span>
+    <input type="date" class="fb-date" id="f-kal-from" onchange="applyKohteet()"/>
+  </div>
+  <span class="fb-sep">–</span>
+  <div class="fb-chip">
+    <span class="fb-label">&nbsp;</span>
+    <input type="date" class="fb-date" id="f-kal-to" onchange="applyKohteet()"/>
+  </div>
+  <div class="fb-divider"></div>
+  <div class="fb-chip">
+    <span class="fb-label">Sopimus alkaen</span>
+    <input type="date" class="fb-date" id="f-sop-from" onchange="applyKohteet()"/>
+  </div>
+  <span class="fb-sep">–</span>
+  <div class="fb-chip">
+    <span class="fb-label">&nbsp;</span>
+    <input type="date" class="fb-date" id="f-sop-to" onchange="applyKohteet()"/>
+  </div>
+  <div class="fb-divider"></div>
+  <button class="fb-clear" onclick="clearKohteet()">✕ Tyhjennä</button>
+  <button class="upload-btn" onclick="document.getElementById('kohteet-file').click()">📂 Lataa Excel</button>
+  <input type="file" id="kohteet-file" accept=".xlsx,.xls" style="display:none" onchange="handleKohteetFile(this)"/>
+  <span class="upload-status-bar" id="kohteet-status"></span>
+</div>
+
+<div class="app-body">
+
+  <!-- ASENTAJAT PAGE -->
+  <div class="page active" id="page-dealers">
+    <div class="map-wrap"><div id="map-dealers"></div></div>
+    <div class="sidebar" id="sb-dealers">
+      <div class="sb-pull" id="sb-pull" onclick="toggleSidebar()"><div class="sb-pull-bar"></div><span class="sb-pull-label" id="sb-pull-label">Lista ▴</span></div>
+        <span class="sb-pull-label">Näytä lista</span>
+      </div>
+      <div class="sb-section">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input id="d-search" placeholder="Hae nimellä tai kaupungilla…" oninput="applyDealerFilters()"/>
+        </div>
+      </div>
+      <div class="sb-section">
+        <div class="sb-label">Tyyppi</div>
+        <div class="pill-row">
+          <span class="pill all on" data-t="all" onclick="setDealerType('all')">Kaikki</span>
+          <span class="pill inst" data-t="installer" onclick="setDealerType('installer')">🔧 Asentajat <strong id="cnt-inst">0</strong></span>
+          <span class="pill res" data-t="reseller" onclick="setDealerType('reseller')">🏪 Jälleenmyyjät <strong id="cnt-res">0</strong></span>
+        </div>
+      </div>
+      <div class="sb-section">
+        <div class="sb-label">Palvelut</div>
+        <div class="svc-filters" id="svc-filters"></div>
+      </div>
+      <div class="scroll-list" id="dealer-list"></div>
+    </div>
+  </div>
 
   <!-- KOHTEET PAGE -->
   <div class="page" id="page-kohteet">
@@ -344,6 +456,9 @@ document.addEventListener('DOMContentLoaded',function(){
 </div><!-- /app-body -->
 
 <!-- MOBILE TAB BAR -->
+
+</div><!-- end app-body -->
+
 <div class="tab-bar">
   <div class="tab-bar-inner">
     <button class="tab-btn active" id="tb-dealers" onclick="showPage('dealers',this)">
@@ -359,6 +474,7 @@ document.addEventListener('DOMContentLoaded',function(){
 </div>
 
 <!-- EDIT MODAL -->
+
 <div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -817,6 +933,8 @@ function initMaps(){
   },{passive:true});
 })();
 </script>
+
+<!-- LOGIN SCREEN -->
 <div class="login-screen" id="login-screen" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483647;background:#0f0e0e;">
   <div class="login-box">
     <div class="login-logo">🔥</div>
@@ -828,115 +946,5 @@ function initMaps(){
   </div>
 </div>
 
-<div class="loading-screen" id="loader">
-  <div class="spinner"></div>
-  <div class="loading-label">Ladataan…</div>
-</div>
-
-<!-- HEADER -->
-<header class="header">
-  <div class="logo">
-    <div class="logo-icon">🔥</div>
-    <div class="logo-text">LP <em>Pro</em></div>
-  </div>
-  <nav class="nav-tabs">
-    <button class="nav-tab active" onclick="showPage('dealers',this)">🗺 Asentajat</button>
-    <button class="nav-tab" onclick="showPage('kohteet',this)">📍 Kohteet</button>
-    <button class="nav-tab" onclick="showPage('edit',this)">✏️ Muokkaa</button>
-  </nav>
-  <div class="header-right">
-    <div style="display:flex;align-items:center;gap:5px;">
-      <div class="dot" id="sync-dot"></div>
-      <span class="sync-label" id="sync-label">Yhdistetty</span>
-    </div>
-  </div>
-</header>
-
-<!-- KOHTEET FILTER BAR -->
-<div class="filter-bar" id="kohteet-filters" style="display:none;">
-  <div class="fb-chip">
-    <span class="fb-label">Tila</span>
-    <select class="fb-select" id="f-tila" onchange="applyKohteet()"><option value="">Kaikki tilat</option></select>
-  </div>
-  <div class="fb-chip">
-    <span class="fb-label">Kansio</span>
-    <select class="fb-select" id="f-kansio" onchange="applyKohteet()"><option value="">Kaikki kansiot</option></select>
-  </div>
-  <div class="fb-chip">
-    <span class="fb-label">Asentaja</span>
-    <select class="fb-select" id="f-asentaja" onchange="applyKohteet()" style="min-width:130px;"><option value="">Kaikki</option></select>
-  </div>
-  <div class="fb-divider"></div>
-  <div class="fb-chip">
-    <span class="fb-label">Vuosi</span>
-    <select class="fb-select" id="f-year" onchange="applyKohteet()" style="min-width:72px;"><option value="">Kaikki</option></select>
-  </div>
-  <div class="fb-chip">
-    <span class="fb-label">Kuukausi</span>
-    <select class="fb-select" id="f-month" onchange="applyKohteet()">
-      <option value="">Kaikki</option>
-      <option value="1">Tammi</option><option value="2">Helmi</option><option value="3">Maalis</option>
-      <option value="4">Huhti</option><option value="5">Touko</option><option value="6">Kesä</option>
-      <option value="7">Heinä</option><option value="8">Elo</option><option value="9">Syys</option>
-      <option value="10">Loka</option><option value="11">Marras</option><option value="12">Joulu</option>
-    </select>
-  </div>
-  <div class="fb-divider"></div>
-  <div class="fb-chip">
-    <span class="fb-label">Kal. työ alkaen</span>
-    <input type="date" class="fb-date" id="f-kal-from" onchange="applyKohteet()"/>
-  </div>
-  <span class="fb-sep">–</span>
-  <div class="fb-chip">
-    <span class="fb-label">&nbsp;</span>
-    <input type="date" class="fb-date" id="f-kal-to" onchange="applyKohteet()"/>
-  </div>
-  <div class="fb-divider"></div>
-  <div class="fb-chip">
-    <span class="fb-label">Sopimus alkaen</span>
-    <input type="date" class="fb-date" id="f-sop-from" onchange="applyKohteet()"/>
-  </div>
-  <span class="fb-sep">–</span>
-  <div class="fb-chip">
-    <span class="fb-label">&nbsp;</span>
-    <input type="date" class="fb-date" id="f-sop-to" onchange="applyKohteet()"/>
-  </div>
-  <div class="fb-divider"></div>
-  <button class="fb-clear" onclick="clearKohteet()">✕ Tyhjennä</button>
-  <button class="upload-btn" onclick="document.getElementById('kohteet-file').click()">📂 Lataa Excel</button>
-  <input type="file" id="kohteet-file" accept=".xlsx,.xls" style="display:none" onchange="handleKohteetFile(this)"/>
-  <span class="upload-status-bar" id="kohteet-status"></span>
-</div>
-
-<div class="app-body">
-
-  <!-- ASENTAJAT PAGE -->
-  <div class="page active" id="page-dealers">
-    <div class="map-wrap"><div id="map-dealers"></div></div>
-    <div class="sidebar" id="sb-dealers">
-      <div class="sb-pull" id="sb-pull" onclick="toggleSidebar()"><div class="sb-pull-bar"></div><span class="sb-pull-label" id="sb-pull-label">Lista ▴</span></div>
-        <span class="sb-pull-label">Näytä lista</span>
-      </div>
-      <div class="sb-section">
-        <div class="search-box">
-          <span class="search-icon">🔍</span>
-          <input id="d-search" placeholder="Hae nimellä tai kaupungilla…" oninput="applyDealerFilters()"/>
-        </div>
-      </div>
-      <div class="sb-section">
-        <div class="sb-label">Tyyppi</div>
-        <div class="pill-row">
-          <span class="pill all on" data-t="all" onclick="setDealerType('all')">Kaikki</span>
-          <span class="pill inst" data-t="installer" onclick="setDealerType('installer')">🔧 Asentajat <strong id="cnt-inst">0</strong></span>
-          <span class="pill res" data-t="reseller" onclick="setDealerType('reseller')">🏪 Jälleenmyyjät <strong id="cnt-res">0</strong></span>
-        </div>
-      </div>
-      <div class="sb-section">
-        <div class="sb-label">Palvelut</div>
-        <div class="svc-filters" id="svc-filters"></div>
-      </div>
-      <div class="scroll-list" id="dealer-list"></div>
-    </div>
-  </div>
 </body>
 </html>
