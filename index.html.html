@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>LP Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+// ── LOGIN ─────────────────────────────────────────────────
+function doLogin(){
+  const pw=document.getElementById('login-pw').value;
+  const err=document.getElementById('login-err');
+  if(pw==='202520272026'){
+    document.getElementById('login-screen').style.display='none';
+    err.textContent='';
+  } else {
+    err.textContent='Väärä salasana. Yritä uudelleen.';
+    document.getElementById('login-pw').value='';
+    document.getElementById('login-pw').focus();
+  }
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ── TOKENS ─────────────────────────────────────────────── */
+:root{
+  --orange:#f3702e;--orange-h:#e55e1a;--orange-soft:rgba(243,112,46,0.12);
+  --blue:#2563eb;--blue-soft:rgba(37,99,235,0.12);
+  --bg:#0f0e0e;--surface:#171515;--surface2:#1e1b1b;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --text:#f0ede8;--muted:#7a7470;--muted2:#4a4644;
+  --red:#ef4444;--yellow:#eab308;--green:#22c55e;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;}
+button,input,select,textarea{font-family:inherit;}
+
+/* ── LOADING ─────────────────────────────────────────────── */
+.loading-screen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+.loading-screen.gone{display:none;}
+.spinner{width:36px;height:36px;border:2.5px solid rgba(243,112,46,0.2);border-top-color:var(--orange);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-label{font-size:13px;color:var(--muted);}
+
+/* ── HEADER ─────────────────────────────────────────────── */
+.header{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;flex-shrink:0;z-index:300;position:relative;}
+.logo{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-right:8px;}
+.logo-icon{width:28px;height:28px;background:var(--orange);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;}
+.logo-text em{color:var(--orange);font-style:normal;}
+.nav-tabs{position:absolute;left:50%;transform:translateX(-50%);display:flex;gap:2px;background:rgba(255,255,255,0.05);border-radius:8px;padding:3px;}
+.nav-tab{padding:5px 14px;border-radius:6px;font-size:12px;font-weight:600;color:var(--muted);border:none;background:none;transition:all .15s;white-space:nowrap;cursor:pointer;}
+.nav-tab.active{background:var(--orange);color:#fff;}
+.nav-tab:hover:not(.active){background:rgba(255,255,255,0.07);color:var(--text);}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;}
+.dot.busy{background:var(--orange);animation:pulse .8s infinite;}
+.dot.bad{background:var(--red);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.sync-label{font-size:11px;color:var(--muted);}
+
+/* ── FILTER BAR ──────────────────────────────────────────── */
+.filter-bar{height:58px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:8px;flex-shrink:0;overflow-x:auto;overflow-y:hidden;max-width:100%;}
+.filter-bar::-webkit-scrollbar{height:0;}
+.fb-chip{display:flex;flex-direction:column;gap:3px;flex-shrink:0;justify-content:center;min-width:0;}
+.fb-label{font-family:'Syne',sans-serif;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding:0 2px;}
+.fb-select{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:11px;padding:4px 8px;outline:none;cursor:pointer;height:28px;-webkit-appearance:none;min-width:90px;max-width:160px;}
+.fb-select:focus{border-color:var(--orange);}
+.fb-select option{background:var(--surface2);}
+.fb-date{background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:11px;padding:4px 6px;outline:none;height:28px;width:110px;-webkit-appearance:none;}
+.fb-date:focus{border-color:var(--orange);}
+.fb-date::-webkit-calendar-picker-indicator{filter:invert(0.5);cursor:pointer;width:10px;}
+.fb-sep{color:var(--muted2);font-size:11px;flex-shrink:0;align-self:center;margin-top:11px;}
+.fb-divider{width:1px;height:28px;background:var(--border);flex-shrink:0;align-self:center;margin:0 4px;}
+.fb-clear{background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;height:28px;transition:all .15s;white-space:nowrap;flex-shrink:0;align-self:center;margin-top:11px;}
+.fb-clear:hover{border-color:var(--orange);color:var(--orange);}
+.upload-btn{background:var(--orange-soft);border:1px solid rgba(243,112,46,0.3);color:var(--orange);border-radius:6px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;height:28px;transition:all .15s;white-space:nowrap;flex-shrink:0;align-self:center;margin-top:11px;}
+.upload-btn:hover{background:rgba(243,112,46,0.22);}
+.upload-status-bar{font-size:10px;color:var(--green);align-self:center;margin-top:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;flex-shrink:1;min-width:0;}
+.upload-status-bar.err{color:var(--red);}
+.upload-status-bar.loading{color:var(--orange);}
+
+/* ── APP BODY ─────────────────────────────────────────────── */
+.app-body{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.page{display:none;flex:1;overflow:hidden;}
+.page.active{display:flex;flex-direction:row;flex:1;}
+#page-dealers.active{flex-direction:row;}
+#page-edit.active{flex-direction:column;}
+
+/* ── MAP ─────────────────────────────────────────────────── */
+.map-wrap{flex:1;position:relative;overflow:hidden;}
+#map-dealers,#map-kohteet{position:absolute;inset:0;}
+.map-legend{position:absolute;bottom:18px;left:12px;z-index:400;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:10px 13px;pointer-events:none;}
+.legend-title{font-family:'Syne',sans-serif;font-weight:700;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;}
+.legend-row{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:500;margin-top:3px;}
+.ldot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+
+/* ── SIDEBAR ─────────────────────────────────────────────── */
+.sidebar{width:300px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
+.kpi-bar{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+.kpi-cell{flex:1;padding:10px 12px;border-right:1px solid var(--border);}
+.kpi-cell:last-child{border-right:none;}
+.kpi-val{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:var(--orange);}
+.kpi-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:1px;}
+
+/* ── JOB LIST ────────────────────────────────────────────── */
+.job-list{flex:1;overflow-y:auto;}
+.job-list::-webkit-scrollbar{width:3px;}
+.job-list::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:4px;}
+.job-card{padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;}
+.job-card:hover{background:rgba(255,255,255,0.04);}
+.job-card.highlighted{background:rgba(243,112,46,0.08);border-left:2px solid var(--orange);}
+.jc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;}
+.jc-name{font-family:'Syne',sans-serif;font-weight:700;font-size:12px;line-height:1.3;}
+.jc-tila{font-size:9px;font-weight:700;padding:2px 6px;border-radius:10px;white-space:nowrap;flex-shrink:0;text-transform:uppercase;letter-spacing:.3px;}
+.tila-valmis{background:rgba(34,197,94,0.12);color:#4ade80;}
+.tila-sopimus{background:rgba(37,99,235,0.12);color:#6fa3f7;}
+.tila-aikataulutettu{background:rgba(124,58,237,0.12);color:#a78bfa;}
+.tila-tarjous{background:rgba(234,179,8,0.12);color:#fbbf24;}
+.tila-other{background:rgba(255,255,255,0.06);color:var(--muted);}
+.jc-addr{font-size:11px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.jc-meta{display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;align-items:center;}
+.jc-meta span{font-size:10px;color:var(--muted);}
+.jc-meta strong{color:var(--text);font-weight:600;}
+.jc-comment{font-size:10px;color:var(--muted);margin-top:3px;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* ── DEALER SIDEBAR ──────────────────────────────────────── */
+.sb-section{padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.sb-label{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.search-box{position:relative;}
+.search-box input{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 10px 8px 32px;color:var(--text);font-size:12px;outline:none;transition:border-color .15s;}
+.search-box input:focus{border-color:var(--orange);}
+.search-box input::placeholder{color:var(--muted);}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;pointer-events:none;}
+.pill-row{display:flex;gap:5px;flex-wrap:wrap;}
+.pill{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:all .15s;background:transparent;}
+.pill.all{border-color:var(--border2);color:var(--muted);}
+.pill.all.on{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.3);color:var(--text);}
+.pill.inst{border-color:rgba(243,112,46,0.3);color:var(--orange);}
+.pill.inst.on{background:var(--orange);color:#fff;}
+.pill.res{border-color:rgba(37,99,235,0.35);color:#6fa3f7;}
+.pill.res.on{background:var(--blue);color:#fff;}
+.svc-filters{display:flex;flex-direction:column;gap:3px;}
+.svc-row{display:flex;align-items:center;gap:8px;padding:5px 7px;border-radius:6px;cursor:pointer;transition:background .12s;}
+.svc-row:hover{background:rgba(255,255,255,0.04);}
+.svc-check{width:14px;height:14px;border-radius:3px;border:1.5px solid var(--muted2);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .12s;}
+.svc-row.on .svc-check{background:var(--orange);border-color:var(--orange);}
+.svc-name{font-size:12px;font-weight:500;flex:1;}
+.svc-count{font-size:10px;font-weight:600;background:rgba(255,255,255,0.06);padding:1px 6px;border-radius:10px;color:var(--muted);}
+.dealer-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 11px;cursor:pointer;transition:all .15s;margin-bottom:4px;}
+.dealer-card:hover,.dealer-card.active{background:rgba(255,255,255,0.07);border-color:var(--border2);}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:2px;}
+.card-name{font-family:'Syne',sans-serif;font-weight:700;font-size:12px;line-height:1.3;}
+.badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:20px;white-space:nowrap;flex-shrink:0;text-transform:uppercase;letter-spacing:.3px;}
+.badge.inst{background:var(--orange-soft);color:var(--orange);}
+.badge.res{background:var(--blue-soft);color:#6fa3f7;}
+.card-addr{font-size:11px;color:var(--muted);margin-bottom:6px;}
+.tag-row{display:flex;flex-wrap:wrap;gap:3px;}
+.tag{font-size:10px;font-weight:600;padding:2px 5px;border-radius:3px;background:var(--orange-soft);color:var(--orange);border:1px solid rgba(243,112,46,0.2);}
+.scroll-list{flex:1;overflow-y:auto;padding:8px;}
+.scroll-list::-webkit-scrollbar{width:3px;}
+.scroll-list::-webkit-scrollbar-thumb{background:var(--muted2);border-radius:4px;}
+
+/* ── POPUP ───────────────────────────────────────────────── */
+.leaflet-popup-content-wrapper{background:var(--surface2)!important;color:var(--text)!important;border:1px solid var(--border2)!important;border-radius:12px!important;padding:0!important;box-shadow:0 16px 48px rgba(0,0,0,0.6)!important;font-family:'DM Sans',sans-serif!important;}
+.leaflet-popup-content{margin:0!important;width:240px!important;}
+.leaflet-popup-tip{background:var(--surface2)!important;}
+.leaflet-popup-close-button{color:var(--muted)!important;top:8px!important;right:8px!important;font-size:18px!important;}
+.popup-body{padding:14px;}
+.popup-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px;}
+.popup-name{font-family:'Syne',sans-serif;font-weight:800;font-size:13px;}
+.popup-addr{font-size:11px;color:var(--muted);margin-bottom:6px;line-height:1.5;}
+.popup-phone a{color:var(--orange);font-size:12px;font-weight:600;text-decoration:none;display:block;margin-bottom:6px;}
+.popup-meta{font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:3px;}
+.popup-meta strong{color:var(--text);}
+.popup-comment{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);font-style:italic;line-height:1.5;}
+
+/* ── EDIT PAGE ───────────────────────────────────────────── */
+#page-edit{background:var(--bg);}
+.edit-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.edit-title{font-family:'Syne',sans-serif;font-weight:800;font-size:14px;}
+.edit-table-wrap{flex:1;overflow:auto;padding:16px 18px;}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:600px;}
+thead th{font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1.2px;font-weight:700;color:var(--muted);text-transform:uppercase;text-align:left;padding:0 10px 10px;border-bottom:1px solid var(--border);}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
+tbody tr:hover{background:rgba(255,255,255,0.03);}
+tbody td{padding:10px;vertical-align:middle;}
+.tag-mini{display:flex;flex-wrap:wrap;gap:3px;}
+.tag-mini span{font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;border:1px solid;}
+.tag-mini span.on{background:var(--orange-soft);color:var(--orange);border-color:rgba(243,112,46,0.2);}
+.tag-mini span.off{background:rgba(255,255,255,0.03);color:var(--muted2);border-color:var(--border);}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text);border-radius:7px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;transition:background .15s;}
+.btn-ghost:hover{background:rgba(255,255,255,0.06);}
+.btn-primary{background:var(--orange);color:#fff;border:none;border-radius:8px;padding:0 14px;height:34px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;transition:background .15s;white-space:nowrap;cursor:pointer;}
+.btn-primary:hover{background:var(--orange-h);}
+
+/* ── MODAL ───────────────────────────────────────────────── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);}
+.overlay.open{display:flex;}
+@media(min-width:640px){.overlay{align-items:center;}.modal-sheet{border-radius:16px!important;max-height:90vh!important;width:440px!important;max-width:95vw;}}
+.modal-sheet{background:var(--surface);border:1px solid var(--border2);border-radius:16px 16px 0 0;width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,0.5);}
+.modal-handle{width:36px;height:4px;background:var(--muted2);border-radius:2px;margin:10px auto 0;}
+.modal-head{padding:14px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;}
+.modal-close{background:none;border:none;color:var(--muted);font-size:22px;line-height:1;cursor:pointer;}
+.modal-body{padding:16px 18px;display:flex;flex-direction:column;gap:14px;}
+.form-field{display:flex;flex-direction:column;gap:5px;}
+.form-label{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;}
+.form-input{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;color:var(--text);font-size:13px;outline:none;width:100%;transition:border-color .15s;-webkit-appearance:none;}
+.form-input:focus{border-color:var(--orange);}
+.form-input::placeholder{color:var(--muted);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.addr-row{display:flex;gap:8px;}
+.addr-row .form-input{flex:1;min-width:0;}
+.geo-btn{background:var(--orange-soft);border:1px solid rgba(243,112,46,0.3);color:var(--orange);border-radius:8px;padding:10px 12px;font-size:13px;cursor:pointer;transition:background .15s;}
+.geo-btn:hover{background:rgba(243,112,46,0.2);}
+.geo-status{font-size:11px;min-height:14px;}
+.geo-status.ok{color:#4ade80;}.geo-status.err{color:#f87171;}
+.type-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.type-btn{padding:12px 10px;border-radius:10px;border:2px solid var(--border2);background:transparent;color:var(--muted);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s;cursor:pointer;}
+.type-btn.inst.on{border-color:var(--orange);background:var(--orange-soft);color:var(--orange);}
+.type-btn.res.on{border-color:var(--blue);background:var(--blue-soft);color:#6fa3f7;}
+.svc-toggles{display:flex;flex-wrap:wrap;gap:6px;}
+.svc-tog{padding:5px 11px;border-radius:6px;font-size:12px;font-weight:600;border:1.5px solid var(--border2);color:var(--muted);background:transparent;transition:all .15s;cursor:pointer;}
+.svc-tog.on{background:var(--orange-soft);border-color:var(--orange);color:var(--orange);}
+.modal-footer{padding:12px 18px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
+.btn-cancel{background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:8px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-save{background:var(--orange);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:13px;font-weight:600;transition:background .15s;cursor:pointer;}
+.btn-save:hover{background:var(--orange-h);}
+
+/* ── LEAFLET ─────────────────────────────────────────────── */
+.leaflet-control-zoom{border:none!important;margin:0 14px 14px 0!important;}
+.leaflet-control-zoom a{background:var(--surface)!important;color:var(--text)!important;border:1px solid var(--border2)!important;width:30px!important;height:30px!important;line-height:30px!important;font-size:16px!important;}
+.leaflet-control-zoom a:hover{background:var(--orange)!important;color:#fff!important;border-color:var(--orange)!important;}
+
+/* ── TOAST ───────────────────────────────────────────────── */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;color:#fff;z-index:9999;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;}
+.toast.show{opacity:1;}
+.toast.ok{background:#166534;}.toast.err{background:#991b1b;}.toast.inf{background:#1e3a8a;}
+
+/* ── MOBILE ──────────────────────────────────────────────── */
+.tab-bar{display:none;height:58px;background:var(--surface);border-top:1px solid var(--border);flex-shrink:0;z-index:200;padding-bottom:env(safe-area-inset-bottom);}
+.tab-bar-inner{display:flex;height:100%;align-items:center;}
+.tab-btn{flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:9px;font-weight:600;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;height:100%;padding:0;transition:color .15s;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.tab-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.tab-btn.active{color:var(--orange);}
+.sb-pull{display:none;align-items:center;justify-content:center;height:44px;cursor:pointer;flex-shrink:0;gap:8px;border-bottom:1px solid var(--border);background:var(--surface);}
+.sb-pull-bar{width:36px;height:4px;background:var(--muted2);border-radius:2px;}
+.sb-pull-label{font-size:12px;font-weight:600;color:var(--muted);}
+.sb-pull-label span{color:var(--orange);font-weight:700;}
+
+@media(max-width:700px){
+  /* Header */
+  .header{padding:0 12px;}
+  .logo-text{font-size:13px;}
+  .sync-label{display:none;}
+  .nav-tabs{display:none;}
+  .tab-bar{display:flex;}
+
+  /* App layout */
+  .app-body{overflow:hidden;}
+  .page.active{position:relative;overflow:hidden;}
+  #page-dealers.active{flex-direction:column;}
+
+  /* Filter bar — wrap into 2 rows on mobile */
+  .filter-bar{height:auto;min-height:52px;padding:6px 10px;flex-wrap:wrap;gap:6px;overflow:visible;}
+  .fb-chip{flex-shrink:1;min-width:0;}
+  .fb-select{min-width:80px;max-width:120px;font-size:12px;}
+  .fb-date{width:100px;font-size:12px;}
+  .fb-divider{display:none;}
+  .fb-sep{margin-top:0;}
+  .fb-clear,.upload-btn{height:30px;font-size:11px;margin-top:0;}
+  .upload-status-bar{max-width:100px;font-size:9px;}
+
+  /* Kohteet map — full height, sidebar slides up from bottom */
+  #page-kohteet.active{flex-direction:column;position:relative;}
+  .map-wrap{flex:1;min-height:0;}
+  #map-kohteet{position:absolute;inset:0;}
+
+  /* Sidebar — bottom sheet */
+  .sidebar{
+    position:absolute;
+    bottom:0;left:0;right:0;
+    width:100%;
+    border-left:none;
+    border-top:2px solid var(--border2);
+    border-radius:18px 18px 0 0;
+    max-height:70vh;
+    height:70vh;
+    transform:translateY(calc(100% - 52px));
+    transition:transform .3s cubic-bezier(.32,.72,0,1);
+    z-index:100;
+    box-shadow:0 -12px 40px rgba(0,0,0,0.5);
+    flex-shrink:0;
+  }
+  .sidebar.open{transform:translateY(0);}
+  .sb-pull{display:flex!important;}
+
+  /* KPIs visible in pull handle area */
+  .kpi-bar{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;}
+  .kpi-bar::-webkit-scrollbar{display:none;}
+  .kpi-cell{padding:6px 10px;min-width:70px;}
+  .kpi-val{font-size:15px;}
+  .kpi-lbl{font-size:8px;}
+
+  /* Dealer map page */
+  #page-dealers .map-wrap{flex:1;}
+  #page-dealers .sidebar{
+    position:absolute;
+    bottom:0;left:0;right:0;
+    width:100%;
+    border-left:none;
+    border-top:2px solid var(--border2);
+    border-radius:18px 18px 0 0;
+    max-height:65vh;
+    height:65vh;
+    transform:translateY(calc(100% - 52px));
+    transition:transform .3s cubic-bezier(.32,.72,0,1);
+    z-index:100;
+    box-shadow:0 -12px 40px rgba(0,0,0,0.5);
+  }
+
+  /* Edit page — stack vertically, scrollable table */
+  #page-edit.active{flex-direction:column;overflow-y:auto;}
+  .edit-header{padding:12px 14px;flex-wrap:wrap;gap:8px;}
+  .edit-title{font-size:13px;}
+  .edit-table-wrap{padding:10px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table{min-width:500px;font-size:11px;}
+  thead th{font-size:8px;padding:0 8px 8px;}
+  tbody td{padding:8px;}
+
+  /* Bigger touch targets for buttons */
+  .btn-ghost,.btn-primary{min-height:38px;}
+  .svc-tog{min-height:36px;font-size:12px;}
+  .form-input{font-size:16px!important;/* prevents iOS zoom */}
+  .fb-select,.fb-date{font-size:16px!important;/* prevents iOS zoom */}
+
+  /* Modal — full width bottom sheet on mobile */
+  .modal-sheet{border-radius:20px 20px 0 0!important;max-height:95vh!important;}
+
+  /* Toast — higher up to avoid tab bar */
+  .toast{bottom:72px;}
+
+  /* Map legend smaller */
+  .map-legend{padding:7px 10px;}
+  .legend-title{font-size:8px;}
+  .legend-row{font-size:10px;}
+
+  /* Popup wider */
+  .leaflet-popup-content{width:260px!important;}
+
+  /* Zoom control position */
+  .leaflet-control-zoom{margin:0 10px 70px 0!important;}
+}
+
+@media(max-width:380px){
+  .fb-select{min-width:65px;max-width:100px;}
+  .fb-date{width:88px;}
+  .kpi-val{font-size:13px;}
+}
+
+/* ── LOGIN ───────────────────────────────────────────────── */
+.login-screen{position:fixed;inset:0;background:var(--bg);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+.login-box{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:36px 32px;width:100%;max-width:380px;display:flex;flex-direction:column;align-items:center;gap:20px;}
+.login-logo{width:52px;height:52px;background:var(--orange);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:4px;}
+.login-title{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;text-align:center;}
+.login-sub{font-size:13px;color:var(--muted);text-align:center;margin-top:-8px;}
+.login-input{background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:14px 16px;color:var(--text);font-size:16px;outline:none;width:100%;text-align:center;letter-spacing:4px;transition:border-color .15s;}
+.login-input:focus{border-color:var(--orange);}
+.login-input::placeholder{letter-spacing:0;color:var(--muted);}
+.login-btn{background:var(--orange);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;width:100%;cursor:pointer;transition:background .15s;font-family:'Syne',sans-serif;}
+.login-btn:hover{background:var(--orange-h);}
+.login-err{font-size:12px;color:#f87171;min-height:16px;text-align:center;}
+</style>
+</head>
+<body>
+
+
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">🗺</div>
+    <div class="login-title">LP Pro</div>
+    <div class="login-sub">Kirjoita salasana jatkaaksesi</div>
+    <input class="login-input" id="login-pw" type="password" placeholder="Salasana" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <div class="login-err" id="login-err"></div>
+    <button class="login-btn" onclick="doLogin()">Kirjaudu sisään →</button>
+  </div>
+</div>
+<div class="loading-screen" id="loader">
+  <div class="spinner"></div>
+  <div class="loading-label">Ladataan…</div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">🔥</div>
+    <div class="logo-text">LP <em>Pro</em></div>
+  </div>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('dealers',this)">🗺 Asentajat</button>
+    <button class="nav-tab" onclick="showPage('kohteet',this)">📍 Kohteet</button>
+    <button class="nav-tab" onclick="showPage('edit',this)">✏️ Muokkaa</button>
+  </nav>
+  <div class="header-right">
+    <div style="display:flex;align-items:center;gap:5px;">
+      <div class="dot" id="sync-dot"></div>
+      <span class="sync-label" id="sync-label">Yhdistetty</span>
+    </div>
+  </div>
+</header>
+
+<!-- KOHTEET FILTER BAR -->
+<div class="filter-bar" id="kohteet-filters" style="display:none;">
+  <div class="fb-chip">
+    <span class="fb-label">Tila</span>
+    <select class="fb-select" id="f-tila" onchange="applyKohteet()"><option value="">Kaikki tilat</option></select>
+  </div>
+  <div class="fb-chip">
+    <span class="fb-label">Kansio</span>
+    <select class="fb-select" id="f-kansio" onchange="applyKohteet()"><option value="">Kaikki kansiot</option></select>
+  </div>
+  <div class="fb-chip">
+    <span class="fb-label">Asentaja</span>
+    <select class="fb-select" id="f-asentaja" onchange="applyKohteet()" style="min-width:130px;"><option value="">Kaikki</option></select>
+  </div>
+  <div class="fb-divider"></div>
+  <div class="fb-chip">
+    <span class="fb-label">Vuosi</span>
+    <select class="fb-select" id="f-year" onchange="applyKohteet()" style="min-width:72px;"><option value="">Kaikki</option></select>
+  </div>
+  <div class="fb-chip">
+    <span class="fb-label">Kuukausi</span>
+    <select class="fb-select" id="f-month" onchange="applyKohteet()">
+      <option value="">Kaikki</option>
+      <option value="1">Tammi</option><option value="2">Helmi</option><option value="3">Maalis</option>
+      <option value="4">Huhti</option><option value="5">Touko</option><option value="6">Kesä</option>
+      <option value="7">Heinä</option><option value="8">Elo</option><option value="9">Syys</option>
+      <option value="10">Loka</option><option value="11">Marras</option><option value="12">Joulu</option>
+    </select>
+  </div>
+  <div class="fb-divider"></div>
+  <div class="fb-chip">
+    <span class="fb-label">Kal. työ alkaen</span>
+    <input type="date" class="fb-date" id="f-kal-from" onchange="applyKohteet()"/>
+  </div>
+  <span class="fb-sep">–</span>
+  <div class="fb-chip">
+    <span class="fb-label">&nbsp;</span>
+    <input type="date" class="fb-date" id="f-kal-to" onchange="applyKohteet()"/>
+  </div>
+  <div class="fb-divider"></div>
+  <div class="fb-chip">
+    <span class="fb-label">Sopimus alkaen</span>
+    <input type="date" class="fb-date" id="f-sop-from" onchange="applyKohteet()"/>
+  </div>
+  <span class="fb-sep">–</span>
+  <div class="fb-chip">
+    <span class="fb-label">&nbsp;</span>
+    <input type="date" class="fb-date" id="f-sop-to" onchange="applyKohteet()"/>
+  </div>
+  <div class="fb-divider"></div>
+  <button class="fb-clear" onclick="clearKohteet()">✕ Tyhjennä</button>
+  <button class="upload-btn" onclick="document.getElementById('kohteet-file').click()">📂 Lataa Excel</button>
+  <input type="file" id="kohteet-file" accept=".xlsx,.xls" style="display:none" onchange="handleKohteetFile(this)"/>
+  <span class="upload-status-bar" id="kohteet-status"></span>
+</div>
+
+<div class="app-body">
+
+  <!-- ASENTAJAT PAGE -->
+  <div class="page active" id="page-dealers">
+    <div class="map-wrap"><div id="map-dealers"></div></div>
+    <div class="sidebar" id="sb-dealers">
+      <div class="sb-pull" id="sb-pull" onclick="toggleSidebar()"><div class="sb-pull-bar"></div><span class="sb-pull-label" id="sb-pull-label">Lista ▴</span></div>
+        <span class="sb-pull-label">Näytä lista</span>
+      </div>
+      <div class="sb-section">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input id="d-search" placeholder="Hae nimellä tai kaupungilla…" oninput="applyDealerFilters()"/>
+        </div>
+      </div>
+      <div class="sb-section">
+        <div class="sb-label">Tyyppi</div>
+        <div class="pill-row">
+          <span class="pill all on" data-t="all" onclick="setDealerType('all')">Kaikki</span>
+          <span class="pill inst" data-t="installer" onclick="setDealerType('installer')">🔧 Asentajat <strong id="cnt-inst">0</strong></span>
+          <span class="pill res" data-t="reseller" onclick="setDealerType('reseller')">🏪 Jälleenmyyjät <strong id="cnt-res">0</strong></span>
+        </div>
+      </div>
+      <div class="sb-section">
+        <div class="sb-label">Palvelut</div>
+        <div class="svc-filters" id="svc-filters"></div>
+      </div>
+      <div class="scroll-list" id="dealer-list"></div>
+    </div>
+  </div>
+
+  <!-- KOHTEET PAGE -->
+  <div class="page" id="page-kohteet">
+    <div class="map-wrap">
+      <div id="map-kohteet"></div>
+      <div class="map-legend">
+        <div class="legend-title">Tila</div>
+        <div class="legend-row"><div class="ldot" style="background:#22c55e"></div>Työmaa valmis</div>
+        <div class="legend-row"><div class="ldot" style="background:#f3702e"></div>Muut tilat</div>
+      </div>
+    </div>
+    <div class="sidebar" id="sb-kohteet">
+      <div class="sb-pull" id="sb-pull" onclick="toggleSidebar()"><div class="sb-pull-bar"></div><span class="sb-pull-label" id="sb-pull-label">Lista ▴</span></div>
+        <span class="sb-pull-label">Näytä lista</span>
+      </div>
+      <div class="kpi-bar" id="kohteet-kpis">
+        <div class="kpi-cell"><div class="kpi-val" id="k-cnt">–</div><div class="kpi-lbl">Kohteet</div></div>
+        <div class="kpi-cell"><div class="kpi-val" id="k-done">–</div><div class="kpi-lbl">Valmis</div></div>
+        <div class="kpi-cell"><div class="kpi-val" id="k-rev">–</div><div class="kpi-lbl">Liikevaihto</div></div>
+      </div>
+      <div class="job-list" id="kohteet-list">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;padding:32px 20px;text-align:center;">
+          <div style="font-size:32px;">📂</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;">Lataa Excel-tiedosto</div>
+          <div style="font-size:11px;color:var(--muted);">Klikkaa "Lataa Excel" yläpalkissa<br/>tai vedä tiedosto tähän</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT PAGE -->
+  <div class="page" id="page-edit">
+    <div class="edit-header">
+      <span class="edit-title">✏️ Muokkaa asentajia & jälleenmyyjiä</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span style="font-size:11px;color:var(--muted)" id="edit-count"></span>
+        <button class="btn-ghost" onclick="loadDealers(true)" style="font-size:12px;">🔄 Päivitä</button>
+        <button class="btn-primary" onclick="openModal()">+ Lisää uusi</button>
+      </div>
+    </div>
+    <div class="edit-table-wrap">
+      <table>
+        <thead><tr><th>Nimi</th><th>Tyyppi</th><th>Osoite</th><th>Palvelut</th><th>Muistiinpanot</th><th></th></tr></thead>
+        <tbody id="dealer-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /app-body -->
+
+<!-- MOBILE TAB BAR -->
+<div class="tab-bar">
+  <div class="tab-bar-inner">
+    <button class="tab-btn active" id="tb-dealers" onclick="showPage('dealers',this)">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Asentajat
+    </button>
+    <button class="tab-btn" id="tb-kohteet" onclick="showPage('kohteet',this)">
+      <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>Kohteet
+    </button>
+    <button class="tab-btn" id="tb-edit" onclick="showPage('edit',this)">
+      <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Muokkaa
+    </button>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <span class="modal-title" id="modal-title">Lisää asentaja</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-field">
+        <div class="form-label">Tyyppi</div>
+        <div class="type-btns">
+          <button class="type-btn inst on" id="tbtn-inst" onclick="setModalType('installer')">🔧 Asentaja</button>
+          <button class="type-btn res" id="tbtn-res" onclick="setModalType('reseller')">🏪 Jälleenmyyjä</button>
+        </div>
+      </div>
+      <div class="form-field"><label class="form-label">Nimi *</label><input class="form-input" id="m-name" placeholder="Yrityksen nimi"/></div>
+      <div class="form-field">
+        <label class="form-label">Osoite *</label>
+        <div class="addr-row">
+          <input class="form-input" id="m-addr" placeholder="Katuosoite, kaupunki"/>
+          <button class="geo-btn" onclick="geocodeAddr()">📍</button>
+        </div>
+        <span class="geo-status" id="geo-status"></span>
+      </div>
+      <div class="form-row">
+        <div class="form-field"><label class="form-label">Lat</label><input class="form-input" id="m-lat" type="number" step="0.0001"/></div>
+        <div class="form-field"><label class="form-label">Lng</label><input class="form-input" id="m-lng" type="number" step="0.0001"/></div>
+      </div>
+      <div class="form-field"><label class="form-label">Puhelin</label><input class="form-input" id="m-phone" placeholder="+358 40 123 4567"/></div>
+      <div class="form-field"><label class="form-label">Muistiinpanot</label><textarea class="form-input" id="m-notes" rows="3" placeholder="Muistiinpanot…" style="resize:vertical;min-height:70px;"></textarea></div>
+      <div class="form-field"><label class="form-label">Palvelut</label><div class="svc-toggles" id="m-svcs"></div></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" id="m-del" style="display:none;color:var(--red);border-color:rgba(239,68,68,0.3);" onclick="deleteDealer()">🗑 Poista</button>
+      <button class="btn-cancel" onclick="closeModal()">Peruuta</button>
+      <button class="btn-save" onclick="saveDealer()">Tallenna</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API='/api/dealers';
+const SVCS=['LVI','SÄHKÖMIES','VILP Sähkö','Putki VILP + KV/LV','ILP','KYLMÄ Alle 3.kg','KYLMÄ YLI 3.kg','Huolto','KIINTEISTÖ HUOLTO'];
+const CC={'Nokia':[61.4784,23.5094],'Degerby':[60.0833,23.7833],'Kuopio':[62.8924,27.6780],'Helsinki':[60.1699,24.9384],'Espoo':[60.2052,24.6552],'Vantaa':[60.2952,25.0379],'Tampere':[61.4978,23.7610],'Oulu':[65.0121,25.4651],'Turku':[60.4518,22.2666],'Jyväskylä':[62.2415,25.7482],'Lahti':[60.9827,25.6612],'Kokkola':[63.8374,23.1262],'Pietarsaari':[63.6731,22.6939],'Vaasa':[63.0960,21.6158],'Joensuu':[62.6010,29.7636],'Kotka':[60.4673,26.9454],'Seinäjoki':[62.7867,22.8324],'Riihimäki':[60.7375,24.7740],'Kälviä':[63.8777,23.4431],'Pieksämäki':[62.3025,27.1400],'Kouvola':[60.8677,26.7042],'Lohja':[60.2487,24.0655],'Kajaani':[64.2270,27.7330],'Saarijärvi':[62.7088,25.2571],'Hämeenlinna':[60.9960,24.4641],'Ylivieska':[64.0720,24.5605],'Lempäälä':[61.3155,23.7547],'Tornio':[65.8488,24.1441],'Oulainen':[64.2677,24.8128],'Kaarina':[60.4073,22.3718],'Kerava':[60.4029,25.1044],'Joutsa':[61.7442,26.1106],'Suonenjoki':[62.6259,27.1187],'Kannus':[63.9012,24.0012],'Kauhava':[63.1006,23.0670],'Kemi':[65.7361,24.5640],'Kempele':[64.9171,25.5043],'Muhos':[64.8073,25.9948],'Keuruu':[62.2575,24.7054],'Mikkeli':[61.6883,27.2725],'Hyvinkää':[60.6304,24.8602],'Hanko':[59.8241,22.9663],'Kuhmo':[64.1249,29.5166],'Sipoo':[60.3770,25.2659],'Forssa':[60.8153,23.6224],'Valkeakoski':[61.2652,24.0286],'Siilinjärvi':[63.0826,27.6613],'Iisalmi':[63.5591,27.1908],'Hamina':[60.5682,27.1983],'Leppävirta':[62.4895,27.7857],'Salo':[60.3839,23.1321],'Lappeenranta':[61.0588,28.1870],'Laihia':[62.9755,22.0123],'Imatra':[61.1693,28.7688],'Sastamala':[61.3438,22.9078],'Järvenpää':[60.4733,25.0888],'Kirkkonummi':[60.1158,24.4404],'Laukaa':[62.4108,25.9572],'Tuusula':[60.4027,25.0167],'Pori':[61.4851,21.7971],'Rovaniemi':[66.5039,25.7294],'Kuusamo':[65.9616,29.1869],'Nurmijärvi':[60.4682,24.8041],'Heinola':[61.2063,26.0258],'Muurame':[62.1337,25.6729],'Raisio':[60.4857,22.1695],'Parainen':[60.2992,22.3010],'Jämsä':[61.8633,25.1883],'Kauhajoki':[62.4331,22.1820],'Kalajoki':[64.2567,23.9483],'Akaa':[61.1658,23.8637],'Hämeenkyrö':[61.6423,23.1973],'Lapua':[62.9727,23.0058],'Ylöjärvi':[61.5567,23.5929],'Loviisa':[60.4558,26.2241],'Haapavesi':[63.6939,25.3570],'Paimio':[60.4573,22.6869],'Naantali':[60.4669,22.0254],'Viitasaari':[63.0713,25.8578],'Pirkkala':[61.4659,23.6445],'Toholampi':[63.7854,24.2479],'Jokela':[60.5368,25.0011],'Kristiinankaupunki':[62.2739,21.3778],'Tyrnävä':[64.7663,25.6643],'Alavus':[62.5862,23.6152],'Oulunsalo':[64.9370,25.4724],'Mäntsälä':[60.6352,25.3144],'Lieksa':[63.3176,30.0193],'Orimattila':[60.8044,25.7315],'Halikko':[60.3940,23.0779],'Evijärvi':[63.3619,23.4875],'Kuusankoski':[60.9007,26.6210],'Parkano':[62.0157,23.0232],'Uusikaupunki':[60.8024,21.4077],'Raahe':[64.6839,24.4730],'Ilomantsi':[62.6667,30.9311],'Kiuruvesi':[63.6564,26.6183],'Loimaa':[60.8510,23.0574],'Harjavalta':[61.3157,22.1382],'Hollola':[60.9832,25.5106],'Joroinen':[62.1792,27.8304],'Mustasaari':[63.0960,21.6158],'Kiiminki':[65.1297,25.7631],'Haukipudas':[65.1827,25.3566],'Marinkainen':[63.9616,23.2547],'Veikkola':[60.2792,24.4113],'Suomussalmi':[64.8831,29.0153],'Ilmajoki':[62.7374,22.5729],'Nurmo':[62.8178,22.9014],'Kaustinen':[63.5568,23.6993],'Ylihärmä':[63.1425,22.8298],'Klaukkala':[60.3917,24.7601],'Joutseno':[61.1134,28.5153],'Tuusniemi':[62.8141,28.5057],'Kurikka':[62.6107,22.4088],'Nousiainen':[60.5883,22.1454],'Kellokoski':[60.5168,25.0926],'Parola':[60.9812,24.2936],'Pyhäsalmi':[63.6800,25.9825],'Rajamäki':[60.5050,24.9781],'Tikkakoski':[62.3726,25.6574],'Taivalkoski':[65.5697,28.2422],'Polvijärvi':[62.8620,29.3755],'Hartola':[61.5853,26.0134],'Kangasala':[61.4659,24.0777],'Karjaa':[60.0748,23.6703],'Lieto':[60.5074,22.4590],'Askola':[60.5256,25.5979],'Jalasjärvi':[62.4910,22.7766],'Perniö':[60.2038,23.1259],'Juankoski':[63.3704,28.3537],'Leppävesi':[62.3261,25.7724],'Kiviniemi':[64.1297,26.4738],'Merikaarto':[64.0742,24.1726],'Reijola':[62.6312,29.5843],'Palokka':[62.3283,25.7201],'Utajärvi':[64.7563,26.4157],'Mynämäki':[60.6749,21.9801],'Teuva':[62.4853,21.7393],'Kruunupyy':[63.7236,23.0083],'Nakkila':[61.3586,22.0012],'Larsmo':[63.7563,22.7877],'Jyskä':[62.2892,25.8497],'Maalahti':[62.9736,21.5511],'Koskenkorva':[62.7792,22.4541],'Sievi':[63.9068,24.5183],'Kankaanpää':[61.8036,22.3964],'Kontiolahti':[62.7611,29.8461],'Riistavesi':[62.6524,28.4897],'Multia':[62.4015,24.7932],'Kolho':[62.1327,24.5041],'Simpele':[61.3379,29.3580],'Hamari':[60.3083,26.0456],'Vihanti':[64.4835,25.0086],'Nummela':[60.3318,24.3326],'Hyllykallio':[62.7812,22.8445],'Rautalampi':[62.6266,26.8338],'Pulkkila':[64.2624,25.8719],'Pattijoki':[64.6397,24.7181],'Vihti':[60.4208,24.3944],'Kalanti':[60.8187,21.5525],'Virrat':[62.2435,23.7746],'Vesilahti':[61.2748,23.6326],'Jämijärvi':[61.7833,22.7167],'Kokemäki':[61.2557,22.3547],'Ahokylä':[64.6333,25.6833],'Sandsund':[63.7050,22.7200],'Inari':[68.9064,27.0195],'Jääli':[65.0667,25.5667],'Pudasjärvi':[65.3667,26.9167],'Ii':[65.3167,25.3833],'Simo':[65.6583,25.0694],'Juuka':[63.2333,28.8667],'Kinkomaa':[62.1167,25.8500],'Perho':[63.2167,24.4167],'Masku':[60.5667,22.1000],'Soini':[62.8667,24.2000],'Kyröskoski':[61.6667,23.5167],'Hattula':[61.0500,24.3500],'Outokumpu':[62.7167,29.0167],'Merimasku':[60.4500,22.0333],'Ylikiiminki':[65.0500,26.2833],'Urjala':[61.0833,23.5333],'Taavetti':[60.9167,27.5667],'Mäntyharju':[61.4000,26.8833],'Kitee':[62.1000,30.1333],'Ryttylä':[60.8833,24.6500],'Naarajärvi':[62.5500,27.2333],'Vääksy':[61.1667,25.5500],'Nastola':[60.9500,25.9333],'Lievestuore':[62.2333,26.1667],'Tammisaari':[59.9667,23.4333],'Loppi':[60.7167,24.4333],'Tarvasjoki':[60.6333,22.6833],'Piikkiö':[60.4167,22.5500],'Otalampi':[60.3500,24.3500],'Lammi':[61.0833,25.0000],'Lohtaja':[63.9833,23.5500],'Monninkylä':[60.5667,25.4333],'Eugmo':[63.7200,22.8500],'Aavasaksa':[66.3667,23.9500],'Ruotsalo':[63.9200,23.3800],'Turenki':[60.9167,24.6333],'Munsala':[63.3500,22.4833],'Humppila':[60.9167,23.3833],'Lemi':[61.0667,28.3167],'Hikiä':[60.7333,24.7833],'Puumala':[61.5167,28.1833],'Laitila':[60.8750,21.6936],'Lumijoki':[64.9167,25.1333],'Janakkala':[60.9000,24.6167],'Martinniemi':[65.0833,25.3833],'Nurmes':[63.5500,29.1500],'Uusikarleby':[63.5167,22.5333],'Siuro':[61.5000,23.3333],'Kärsämäki':[63.9667,25.7667],'Nilsiä':[63.2167,28.0833],'Jorvas':[60.1333,24.5333],'Tunkkari':[63.0667,23.8333],'Heinävesi':[62.4333,28.6500],'Sulva':[63.0833,21.5833],'Puolanka':[64.8667,27.6667],'Tupos':[64.8500,25.4333],'Ranua':[65.9333,26.5333],'Veteli':[63.4833,23.7667],'Keminmaa':[65.7500,24.5667],'Vaala':[64.5500,26.8333],'Pello':[66.7833,23.9667],'Vimpeli':[63.1500,23.8167],'Järvelä':[60.7333,25.0833],'Hyrynsalmi':[64.6667,28.5167],'Kangasniemi':[61.9833,26.6333],'Savonlinna':[61.8667,28.8833],'Jurva':[62.6833,21.9667],'Juupajoki':[61.8833,23.8000],'Mänttä':[62.0333,24.6333],'Karvia':[62.1333,22.5500],'Kivijärvi':[63.1667,25.0833],'Tohmajärvi':[62.2333,30.3333],'Pornainen':[60.4833,25.3500],'Pyhäjärvi':[63.6667,25.9167],'Voikkaa':[60.8833,26.6167],'Raasepori':[60.0000,23.4333],'Inkoo':[60.0500,24.0000],'Luumäki':[60.8667,27.5833],'Myrskylä':[60.6667,25.8500],'Suolahti':[62.5833,25.8667],'Oitti':[60.8167,25.0667],'Littoinen':[60.4333,22.3500],'Pyhäranta':[60.9167,21.4500],'Aura':[60.6167,22.5833],'Noormarkku':[61.5833,21.8667],'Siuntio':[60.1333,24.2333],'Säynätsalo':[62.1333,25.7833],'Kinnula':[63.3833,24.9833],'Eurajoki':[61.2000,21.7333],'Tervo':[62.9667,26.7500],'Nivala':[63.9333,24.9667],'Hirvensalmi':[61.6333,26.8000],'Vuokatti':[64.1500,28.2667],'Kuhmoinen':[61.5667,25.1833],'Vöyri':[63.1333,22.2333],'Uimaharju':[62.8833,30.1833],'Piippola':[64.1500,26.1333],'Alaveteli':[63.7167,23.3333],'Houtskari':[60.1500,21.3667],'Kråkö':[60.3000,25.8167],'Oravaisfabrik':[63.2833,22.3833],'Kållby':[63.8667,22.9167],'Perttula':[60.4500,24.6500],'Öja':[63.7050,22.7200],'Kisko':[60.2038,23.1259],'Alavieska':[64.1611,24.5888],'Varkaus':[62.3147,27.8706],'Vanha-Ulvila':[61.3500,21.8833],'Villähde':[60.9500,25.9500],'Kallislahti':[61.8000,28.8000],'Lampikangas':[61.0588,28.1870],'Pyhäntä':[64.1000,26.3167],'Sotkamo':[64.1333,28.1000],'Himanka':[63.9500,23.6167],'Toijala':[61.1658,23.8637],'Valkeala':[60.9500,26.8167],'Peura':[66.2500,29.0333],'Paavola':[64.3667,25.1333],'Piispanristi':[60.4167,22.3333],'Raahe':[64.6839,24.4730],'Tornio':[65.8488,24.1441],'Ähtävä':[63.5833,22.7167],'Kaavi':[62.9833,28.4833],'Jokioinen':[60.8333,23.4833],'Ylämylly':[62.5833,29.3667],'Kolho':[62.1327,24.5041],'Merikaarto':[64.0742,24.1726],'Porvoo':[60.3930,25.6650],'Karkkila':[60.5354,24.2101],'Rauma':[61.1298,21.5119],'Kello':[65.1000,25.4333],'Lapinlahti':[63.3667,27.3833],'Kestilä':[64.3333,25.9500],'Saloinen':[64.6333,24.5667],'Söderkulla':[60.3770,25.2659],'Jepua':[63.4000,22.6333],'Kausala':[60.9000,26.3167],'Vaajakoski':[62.2667,25.9000],'Kolari':[67.3333,23.8000],'Sonkajärvi':[63.6667,27.5000],'Pöytyä':[60.7167,22.6833],'Viinijärvi':[62.6667,29.2333],'Kaipola':[61.7833,25.1333],'Hamula':[62.9833,22.6333],'Vuorentausta':[61.5167,24.0167],'Jämsänkoski':[61.9167,25.1833],'Myllyoja':[64.9167,25.6000],'Hangonkylä':[63.1833,23.2500],'Rusko':[60.5167,22.3500],'Tervakoski':[60.8000,24.6833],'Padasjoki':[61.3500,25.2833],'Mieto':[60.6749,21.9801],'Liminka':[64.8000,25.4167],'Lehmo':[62.7833,29.7167],'Vieremä':[63.7500,26.8167],'Otanmäki':[64.1167,26.8167],'Somero':[60.6333,23.5167],'Ylistaro':[62.9500,22.4833],'Pomarkku':[61.6833,22.0000],'Pyhäjoki':[64.4667,24.2500],'Konnevesi':[62.6167,26.3333],'Pännäinen':[63.7667,22.7833],'Reisjärvi':[63.8333,24.7167],'Luoma':[60.2333,24.5000],'Tammela':[60.8000,23.7667],'Lappfjärd':[62.2500,21.5500],'Teijo':[60.1333,23.0333],'Harviala':[60.9333,24.5500],'Nauvo':[60.2000,21.9000],'Vehmaa':[60.6833,21.7167],'Hailuoto':[65.0000,24.7333],'Sysmä':[61.5000,26.5167],'Oksava':[62.5500,22.4667],'Riihikoski':[60.7500,23.0833],'Ulvila':[61.3500,21.8833],'Rääkkylä':[62.3167,29.6167],'Paattinen':[60.5833,22.3833],'Ähtäri':[62.5500,24.0667],'Orismala':[62.8667,22.3333],'Kärkölä':[60.8833,25.2833],'Ruokolahti':[61.2833,28.8333],'Ojakkala':[60.3833,24.2833],'Siikajoki':[64.8000,24.9833],'Inkeroinen':[60.8833,26.8667],'Rauha':[61.0667,28.4167],'Oripää':[60.8500,22.6833],'Röykkä':[60.4833,24.6000],'Väyrinki':[63.8500,27.1167],'Uusikaarlepyy':[63.5167,22.5333],'Kuusisto':[60.3833,22.3167],'Koria':[60.8667,26.6500],'Kivikangas':[63.5833,26.2333],'Pälkäne':[61.3333,24.2667],'Sorsakoski':[62.2167,27.5833],'Eno':[62.8000,30.1667],'Sauvo':[60.3500,22.7000],'Lehtovaara':[65.2167,29.2000],'Korpilahti':[62.0167,25.5667],'Hammaslahti':[62.4000,29.8333],'Vähäkyrö':[63.0667,22.0667],'Nummijärvi':[61.6167,22.5167],'Karstula':[62.8667,24.8000],'Hankasalmi':[62.3833,26.4333],'Savitaipale':[61.2000,27.7000],'Kiihtelysvaara':[62.4833,30.1000],'Toivala':[63.0333,27.7167],'Paltamo':[64.4000,27.8167],'Singsby':[60.2167,25.8667],'Överpurmo':[63.6833,23.1167],'Pyhtää':[60.5167,26.6833],'Kemiönsaari':[60.1833,22.7333],'Nuijamaa':[61.0833,28.5833],'Sykäräinen':[64.0500,24.4167],'Lokalahti':[60.7500,21.6000],'Lappohja':[59.9000,23.2833],'Punkaharju':[61.7833,29.3667],'Tuuri':[62.5667,23.6333],'Vierumäki':[61.0667,25.5000],'Härmä':[63.0500,22.7833],'Hietama':[62.5500,26.4833],'Elimäki':[60.7167,26.4500],'Vojakkala':[65.8833,24.4500],'Luusua':[66.4333,27.2667],'Vihtavuori':[62.1667,25.9500],'Utti':[60.8833,26.9167],'Lappajärvi':[63.1667,23.6333],'Ruovesi':[61.9833,24.0667],'Kemijärvi':[66.7000,27.4333],'Jaala':[60.9500,26.4667],'Edsevö':[63.5167,22.4667],'Lautiosaari':[65.8167,24.4833],'Pertunmaa':[61.5000,26.4667],'Alajärvi':[63.0000,23.8167],'Liperi':[62.5333,29.3833],'Kerimäki':[61.9167,29.2833],'Petäjävesi':[62.2500,25.1833],'Pihtipudas':[63.3667,25.5667],'Orivesi':[61.6833,24.3500],'Eura':[61.1333,22.1333],'Kortesjärvi':[63.2167,23.1833],'Vilppula':[62.0167,24.5000],'Taipalsaari':[61.1833,28.0833],'Äänekoski':[62.6000,25.7167],'Vesanto':[62.9333,26.4167],'Anjala':[60.7000,26.8167],'Iitti':[60.9667,26.3167],'Asikkala':[61.1833,25.5500],'Ruukki':[64.6667,25.0833],'Haapajärvi':[63.7500,25.3500],'Karinainen':[60.7833,22.5333],'Hämeenkoski':[61.0333,25.1667],'Pielavesi':[63.2333,26.7500],'Myllykoski':[60.8500,26.7833],'Koskenpää':[62.2667,24.9167],'Kannonkoski':[63.0000,25.3333],'Sukeva':[63.9167,27.4500],'Eskola':[63.8333,24.1833],'Ristijärvi':[64.5167,28.2167],'Lappi':[61.1000,21.7833],'Toivakka':[62.1000,26.1167],'Keitele':[63.2000,26.3000],'Jurmu':[64.9167,28.1167],'Nummi':[60.3167,23.7667],'Korkeakoski':[61.7500,24.3833],'Ruotsinpyhtää':[60.5333,26.3833],'Rautio':[64.1000,24.0333],'Pukkila':[60.6333,25.5000],'Köyliö':[61.1167,22.3000],'Suomenniemi':[61.3167,27.2333],'Lestijärvi':[63.5333,24.6333],'Ypäjä':[60.7833,23.2667],'Tuupovaara':[62.5167,30.5833],'Virtasalmi':[62.2167,27.2833],'Korsnäs':[62.9333,21.2000],'Lapinjärvi':[60.6167,26.1500],'Pyhäkumpu':[63.6500,25.9000],'Rantsila':[64.5167,25.6333],'Saimaanharju':[61.4667,28.3000],'Nummi-Pusula':[60.3167,23.7667],'Askainen':[60.5333,22.0833],'Mönni':[60.7667,23.2167],'Varpasjärvi':[63.5500,26.6167],'Siikalatva':[64.2500,26.0000],'Alvettula':[61.1000,24.1833],'Kuvansi':[62.5667,26.7667],'Marttila':[60.6167,22.8500],'Hankasalmi As':[62.3833,26.4333],'Niittylahti':[62.6833,29.5000],'Visuvesi':[62.0333,23.8333],'Karhuvaara':[65.3167,25.8833],'Langelmäki':[61.7667,24.6000],'Yppäri':[64.4333,24.2500],'Haapaniemi':[63.1000,27.7333],'Taklax':[60.1167,23.5833],'Kerma':[62.0833,28.7000],'Märynummi':[60.5167,23.4167],'Mustio':[60.1000,23.7833],'Huhmari':[60.8500,25.3167],'Pusula':[60.4167,23.9167],'Vakkola':[60.5667,25.7000],'Vahto':[60.5500,22.5000],'Letku':[60.6833,23.1500],'Pekiömäki':[63.4167,25.5833],'Haarajoki':[60.4833,25.1500],'Kivistö':[60.3333,25.0167],'Tervajoki':[62.8833,22.2500],'Kihniö':[62.2000,23.1833],'Auttoinen':[61.3167,25.1000],'Töysä':[62.5833,23.7333],'Hoisko':[62.3500,25.3667],'Yli-II':[65.3833,26.4167],'Luopajärvi':[61.8167,23.5167],'Minkiö':[60.8667,23.5333],'Horo':[63.0167,22.1333],'Rosala':[59.9833,22.9333],'Fagervik':[60.0500,23.6000],'Strömmä':[60.0833,22.9500],'Högbacka':[63.2500,22.2167],'Skogby':[60.1333,23.5167],'Kauppilanmäki':[63.5667,27.5000],'Halkia':[60.8500,25.4500],'Puhoskylä':[63.2833,29.8833],'Kuusjärvi':[62.7167,29.0333],'Kerkonjoensuu':[62.8333,26.7167],'Vuorela':[63.1000,27.8167],'Toisvesi':[61.9167,23.7333],'Purola':[60.5167,25.2000],'Jakkula':[63.7833,24.5167],'Jaatila':[65.1333,25.7000],'Perkiönmäki':[61.3333,23.1833],'Bäckby':[63.1500,21.7333],'Julkujärvi':[61.5500,23.9167],'Lemu':[60.6167,22.2333],'Neuvola':[61.5333,27.3500],'Luhtajoki':[60.5000,24.7667],'Viljalahti':[61.5833,28.2667],'Pajulahti':[61.0333,25.7500],'Kuluntalahti':[63.4167,28.2500],'Kotvala':[60.6333,24.9833],'Vuorenmaa':[62.8167,23.5000],'Kirjavala':[62.5333,29.9333],'Sokoja':[62.0500,28.2000],'Kirjola':[61.0167,28.6167],'Suuraho':[61.2833,25.8500],'Santtio':[61.2167,28.5833],'Hurissalo':[61.5833,28.0000],'Pyhältö':[60.8500,27.1500],'Kuni':[62.7833,22.7500],'Vehkataipale':[61.4000,27.8500],'Saukonkylä':[62.7167,23.3000],'Ilmarinen':[60.5833,24.4167],'Porras':[60.9667,24.9000],'Leppälahti':[62.8667,25.6167],'Ruto':[61.7000,24.1667],'Mannila':[62.2415,25.7482],'Närpes':[62.4833,21.3333],'Kolppi':[63.7000,23.0333],'Louhioja':[64.5167,25.3167],'Suhmura':[64.1833,27.6833],'Tavastila':[60.6833,26.9833],'Sanginkylä':[64.8333,25.9500],'Siltakylä':[60.5333,26.5500],'Tikkala':[62.7000,29.6500],'Kalaniemi':[63.5333,27.8500],'Jäminkipohja':[62.1333,23.9833],'Kantele':[63.9500,24.4000],'Vehkajärvi':[61.3500,24.7833],'Vartiala':[63.9000,28.6667],'Hamari':[60.3083,26.0456],'Metsä':[61.1500,23.9833],'Tannila':[65.2333,25.7667],'Älystö':[61.5167,23.6500],'Torittu':[60.7167,22.8833],'Kirkniemi':[60.1333,23.8500],'Salosaari':[61.3333,21.9333],'Luomankylä':[61.6333,22.5667],'Västilä':[60.7667,26.1833],'Kuukanniemi':[61.8833,28.5833],'Hiidenniemi':[62.4167,29.4333],'Numminen':[60.4500,23.8833],'Kortela':[60.9167,25.2333],'Hiltulanlahti':[62.8167,27.9333],'Kannusjärvi':[60.4500,25.8000],'Äänekoivisto':[62.6000,25.7167],'Tesjoki':[60.5833,26.2167],'Kämmenniemi':[61.5667,23.8833],'Jakkukylä':[65.3000,26.2000],'Kantti':[61.0167,24.4500],'Öjä':[63.7050,22.7200],'Paippinen':[60.5500,26.2167],'Ranta-töysä':[62.5000,23.7667],'Yli-Ullava':[63.7833,24.1167],'Harju':[60.8833,26.6167],'Pyhtää':[60.5167,26.6833],'Vähä kyrö':[63.0667,22.0667],'Kangasala As':[61.4659,24.0777],'Alavus As':[62.5862,23.6152],'Ypäjä as':[60.7833,23.2667],'Siuro':[61.5000,23.3333],'Västerskog':[60.2167,25.6333],'Rauhala':[63.6667,23.1000],'Lohiluioma':[61.7833,22.1833],'Martinkylä':[60.4027,25.0167],'Puhos':[62.1167,29.8833]};
+const ALI={'karleby':'Kokkola','jakobstad':'Pietarsaari','borgå':'Porvoo','ekenäs':'Tammisaari','raseborg':'Raasepori','hangö':'Hanko','lovisa':'Loviisa','nådendal':'Naantali','kristinestad':'Kristiinankaupunki','övermalax':'Maalahti','nykarleby':'Uusikarleby','uusikaarleby':'Uusikarleby','oravaistentehdas':'Oravaisfabrik','kokkkola':'Kokkola','lappenranta':'Lappeenranta','vabtaa':'Vantaa','pohjois-savo':'Varkaus','jns':'Joensuu','pirkanmaa':'Tampere','porvoo':'Porvoo','kello':'Kello','lapinlahti':'Lapinlahti','kausala':'Kausala','korpilahti':'Korpilahti','vieremä':'Vieremä','hangonkylä':'Hangonkylä','eno':'Eno','suomussalmi kk':'Suomussalmi','nurmijärvi / rajamäki':'Nurmijärvi','siuro / nokia':'Nokia','himanka/hillilä':'Himanka','juurikkalahti/sotkamo':'Sotkamo','alavus as':'Alavus','hankasalmi as':'Hankasalmi','ypäjä as':'Ypäjä','vähä kyrö':'Vähäkyrö','hamari / porvoo':'Porvoo','pilkanmaa/ kouvola':'Kouvola','jäkärlä/turku':'Turku','tortinmäki/turku':'Turku','inkoo keskus':'Inkoo','edsevö':'Edsevö','kalaniemi':'Kalaniemi','yli-kiiminki':'Ylikiiminki','yli-ii':'Yli-II','uusikaarlepyy':'Uusikaarlepyy','kovuola':'Kouvola','lentäjäntie 15':'Helsinki','kollektor scan':'Helsinki','yttermark':'Närpes','pulp':'Äänekoski','louhioja':'Louhioja','singsby':'Singsby','istunmäki':'Jyväskylä','mannila':'Tampere','suomussalmi kk':'Suomussalmi','Suomussalmi kk':'Suomussalmi','LAPINLAHTI':'Lapinlahti','ENO':'Eno','KEITELE':'Keitele','KELLO':'Kello','VIINIJÄRVI':'Viinijärvi','ILMARINEN':'Ilmarinen','YTTERMARK':'Närpes','PULP':'Äänekoski','LOUHIOJA':'Louhioja','kangasala as':'Kangasala','siuro / nokia':'Nokia','himanka/hillilä':'Himanka','juurikkalahti/sotkamo':'Sotkamo','pilkanmaa/ kouvola':'Kouvola','jäkärlä/turku':'Turku','tortinmäki/turku':'Turku','yli-ii':'Yli-II','ranta-töysä':'Ranta-töysä','vieremä':'Vieremä','nummi-pusula':'Nummi-Pusula','yli-ullava':'Yli-Ullava'};
+
+const HARDCODED_DEALERS=[
+{id:1,name:"Emil Finnilä",address:"Forskansintie 3, 68410 Alaveteli",type:"installer",services:["LVI","SÄHKÖMIES","VILP Sähkö","Putki VILP + KV/LV","ILP","Huolto"],phone:"",notes:"",lat:63.7167,lng:23.3333},
+{id:2,name:"Kalle Hämäläinen",address:"Tahvosentie 15, 40520 Jyväskylä",type:"installer",services:["VILP Sähkö","ILP","Huolto"],phone:"",notes:"",lat:62.2415,lng:25.7482},
+{id:3,name:"Joosua Kaakinen",address:"Takatie 79, 91100 Ii",type:"installer",services:["SÄHKÖMIES","VILP Sähkö","ILP","Huolto"],phone:"",notes:"",lat:65.3167,lng:25.3833},
+{id:4,name:"Matias Kangastie",address:"Mustikkamäentie 25, 67700 Kokkola",type:"installer",services:["SÄHKÖMIES","VILP Sähkö","ILP","Huolto"],phone:"",notes:"",lat:63.8374,lng:23.1262},
+{id:5,name:"Jussi-Pekka Mantila",address:"Perkkiöntie 106, 84100 Ylivieska",type:"installer",services:["LVI","Putki VILP + KV/LV","ILP","Huolto"],phone:"",notes:"",lat:64.072,lng:24.5605},
+{id:6,name:"Juho Mikkola",address:"Roinilantie 6A, 90440 Kempele",type:"installer",services:["LVI","SÄHKÖMIES","VILP Sähkö","Putki VILP + KV/LV","ILP","Huolto"],phone:"",notes:"",lat:64.9171,lng:25.5043},
+{id:7,name:"Jere Nykänen",address:"Piennartie 15, 16900 Lammi",type:"installer",services:["SÄHKÖMIES","ILP","Huolto"],phone:"",notes:"",lat:61.0833,lng:25.0},
+{id:8,name:"Veeti Suomalainen",address:"Teollisuuskatu 28B 46, 00520 Helsinki",type:"installer",services:["SÄHKÖMIES","VILP Sähkö","ILP","Huolto"],phone:"",notes:"",lat:60.1699,lng:24.9384},
+{id:9,name:"Perttu Tikkanen",address:"Laajavuorentie 7 A 4, 40740 Jyväskylä",type:"installer",services:["LVI","Putki VILP + KV/LV","ILP","Huolto"],phone:"",notes:"",lat:62.2415,lng:25.7482},
+{id:10,name:"Teemu Valma",address:"Palsantie 90, 23600 Kalanti",type:"installer",services:["SÄHKÖMIES","VILP Sähkö","ILP","Huolto"],phone:"",notes:"",lat:60.8187,lng:21.5525},
+{id:11,name:"Jani Vornanen",address:"Reviirikatu 19A, 70840 Kuopio",type:"installer",services:["LVI","Putki VILP + KV/LV","ILP","Huolto"],phone:"",notes:"",lat:62.8924,lng:27.678},
+{id:12,name:"Tino Behm",address:"Vernissakatu 5 A 17, 01300 Vantaa",type:"installer",services:["SÄHKÖMIES","Putki VILP + KV/LV","ILP","Huolto"],phone:"",notes:"",lat:60.2952,lng:25.0379},
+{id:201,name:"Vesa Kärki / Käre Oy",address:"Hakasenraitti 29, 40820 Haapaniemi",type:"reseller",services:["LVI","Putki VILP + KV/LV","ILP","Huolto"],phone:"040 5910811",notes:"Ei sähkömiehen täyttä osaamista, tekee huoltoa ja myy/asentaa laitetta",lat:63.1,lng:27.7333},
+{id:202,name:"Tuomo Huusko / Tuomon talotekniikka Oy",address:"Nurmikkatie 6, 80260 Joensuu",type:"reseller",services:["LVI","SÄHKÖMIES","VILP Sähkö","Putki VILP + KV/LV","ILP","Huolto"],phone:"044 2822807",notes:"Sähkö- Kylmä- ja putkiosaaminen",lat:62.601,lng:29.7636},
+{id:203,name:"Maunu Rantanen / LVI-Cupa Oy",address:"Myrskypilvenkuja 9, 96190 Rovaniemi",type:"reseller",services:["LVI","SÄHKÖMIES","VILP Sähkö","Putki VILP + KV/LV","ILP","KYLMÄ Alle 3.kg","Huolto"],phone:"0509108407",notes:"Innostui, tekee myös huoltoja rovaniemen alueella.",lat:66.5039,lng:25.7294},
+{id:204,name:"Lari Korhonen / Valttilämpö Oy",address:"Markuksenkuja 6, 91800 Tyrnävä",type:"reseller",services:["LVI","SÄHKÖMIES","VILP Sähkö","Putki VILP + KV/LV","ILP","KYLMÄ Alle 3.kg","Huolto"],phone:"045 3568881",notes:"Mahdollisuus isoon yhteistyöhön. Juuri käynnistetty yritys jonka tavoitteena tehdä VILP/MLP/PILP markkinassa bisnestä.",lat:64.7663,lng:25.6643},
+{id:205,name:"Ari Aatsa Koskela / Ekalux Oy",address:"Hongisojantie 395, 01900 Nurmijärvi",type:"reseller",services:["SÄHKÖMIES","VILP Sähkö","Huolto"],phone:"044 9750814",notes:"Tekee sähköasennusta, ei kylmälupia. Tehnyt paljon aurinkosähköhommia.",lat:60.4682,lng:24.8041},
+{id:206,name:"Tino Toivanen / Jokita Oy",address:"Höylätie 4, 19650 Joutsa",type:"reseller",services:["KIINTEISTÖ HUOLTO"],phone:"040 861 6499",notes:"Tekevät huoltoa joutsan alueella. 24/7 Päivystysnumero 0400 649 416",lat:61.7442,lng:26.1106},
+{id:207,name:"Miika Kivelä / Valoisat Oy",address:"Valmetinkatu 12 B 47, 33900 Tampere",type:"reseller",services:["SÄHKÖMIES","VILP Sähkö","ILP","KYLMÄ Alle 3.kg","Huolto"],phone:"050 5510234",notes:"Tehnyt paljon meille hommaa. Sähkäri. Myy vuositasolla muutamia vilppejä.",lat:61.4978,lng:23.761},
+{id:208,name:"Jens Nyback / F:ma Jens Nyback",address:"Dragsfjärdsvägen 345, 25700 Kemiö",type:"reseller",services:["LVI","SÄHKÖMIES","VILP Sähkö","Putki VILP + KV/LV","ILP","KYLMÄ Alle 3.kg","Huolto"],phone:"040 753 6390",notes:"Tekee huoltoa kemiönsaaren alueella. Saaristoon hyvä tekijä.",lat:60.1833,lng:22.7333},
+{id:209,name:"Aleksi Suodenjoki / Jemimar Oy",address:"Salontie 6, 66400 Laihia",type:"reseller",services:["LVI","SÄHKÖMIES","VILP Sähkö","Putki VILP + KV/LV","ILP","KYLMÄ Alle 3.kg","KYLMÄ YLI 3.kg","Huolto"],phone:"040 768 3884",notes:"Bookattu 27.3.2026 klo 12:00. Katsotaan yhteistyö palaverissa.",lat:62.9755,lng:22.0123}
+];
+function toggleSidebar(){
+  const sb=document.querySelector('.sidebar');
+  if(!sb)return;
+  sb.classList.toggle('open');
+  const lbl=document.getElementById('sb-pull-label');
+  if(lbl)lbl.textContent=sb.classList.contains('open')?'Sulje ▾':'Lista ▴';
+  setTimeout(()=>{if(mapK)mapK.invalidateSize();if(mapD)mapD.invalidateSize();},310);
+}
+// ── STATE ─────────────────────────────────────────────────────
+let dealers=[],dMarkers={},selId=null,dType='all',dFilters=new Set();
+let kohteetData=[],kMarkers=[],mapD,mapK;
+let editId=null,modalType='installer';
+
+// ── UTILS ─────────────────────────────────────────────────────
+function normCity(s){if(!s)return'';const l=s.trim().toLowerCase();if(ALI[l])return ALI[l];return l.charAt(0).toUpperCase()+l.slice(1);}
+function getCoord(city){return CC[normCity(city)]||null;}
+function parseDate(v){
+  if(!v)return null;const s=String(v).trim();
+  const m1=s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);if(m1)return new Date(+m1[3],+m1[2]-1,+m1[1]);
+  const m2=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m2)return new Date(+m2[1],+m2[2]-1,+m2[3]);
+  if(!isNaN(v)&&+v>10000){const d=new Date(Math.round((+v-25569)*86400000));if(!isNaN(d.getTime()))return d;}
+  return null;
+}
+function fmtDate(v){const d=parseDate(v);return d?d.toLocaleDateString('fi-FI'):'';}
+function fmtMoney(v){const n=parseFloat(v)||0;if(n>=1000000)return(n/1000000).toFixed(2)+'M €';if(n>=1000)return(n/1000).toFixed(0)+'k €';return n.toFixed(0)+' €';}
+function tilaClass(t){const s=(t||'').toLowerCase();if(s.includes('valmis'))return'tila-valmis';if(s.includes('sopimus'))return'tila-sopimus';if(s.includes('aikataulutettu'))return'tila-aikataulutettu';if(s.includes('tarjous'))return'tila-tarjous';return'tila-other';}
+function showToast(msg,type='inf',ms=2500){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+type;setTimeout(()=>t.className='toast',ms);}
+function setSyncStatus(s){document.getElementById('sync-dot').className='dot'+(s==='busy'?' busy':s==='bad'?' bad':'');document.getElementById('sync-label').textContent=s==='ok'?'Yhdistetty':s==='busy'?'Lataa…':'Yhteysvirhe';}
+
+// ── NAV ───────────────────────────────────────────────────────
+function showPage(name,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelectorAll('.nav-tab,.tab-btn').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  const tb=document.getElementById('tb-'+name);if(tb)tb.classList.add('active');
+  document.getElementById('kohteet-filters').style.display=name==='kohteet'?'flex':'none';
+  if(name==='edit')renderDealerTable();
+  // Close sidebar on tab switch (mobile)
+  const sb=document.querySelector('.sidebar');if(sb)sb.classList.remove('open');
+  const lbl=document.getElementById('sb-pull-label');if(lbl)lbl.textContent='Lista ▴';
+  setTimeout(()=>{
+    if(name==='dealers'&&mapD)mapD.invalidateSize();
+    if(name==='kohteet'&&mapK)mapK.invalidateSize();
+  },60);
+}
+
+// ── EXCEL UPLOAD ──────────────────────────────────────────────
+function handleKohteetFile(inp){if(inp.files[0])processKohteet(inp.files[0]);}
+// Also support drag/drop on the kohteet page
+document.addEventListener('DOMContentLoaded',()=>{
+  const pg=document.getElementById('page-kohteet');
+  pg.addEventListener('dragover',e=>{e.preventDefault();});
+  pg.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f&&f.name.match(/\.xlsx?$/i))processKohteet(f);});
+});
+
+function setUploadStatus(msg,type){
+  const el=document.getElementById('kohteet-status');
+  el.textContent=msg;el.className='upload-status-bar'+(type?' '+type:'');
+}
+function findCol(H,names){for(const n of names){const i=H.findIndex(h=>String(h||'').trim().toLowerCase()===n.toLowerCase());if(i>=0)return i;}return -1;}
+
+function processKohteet(file){
+  setUploadStatus('⏳ Ladataan…','loading');
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:false});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(rows.length<2)throw new Error('Tiedosto on tyhjä');
+      const H=rows[0];
+      const C={
+        etunimi:findCol(H,['Etunimi']),sukunimi:findCol(H,['Sukunimi']),
+        lahiosoite:findCol(H,['Lähiosoite']),postinumero:findCol(H,['Postinumero']),
+        city:findCol(H,['Postitoimipaikka']),puhelin:findCol(H,['Puhelinnumero 1','Puhelinnumero']),
+        toimitusaika:findCol(H,['Alustava toimitusaika']),hinta:findCol(H,['Veroton myyntihinta']),
+        asentajat:findCol(H,['Asentajat']),kansio:findCol(H,['Kansio']),
+        menekki:findCol(H,['Menekkien selitteet']),sopimus:findCol(H,['Sopimus pvm']),
+        kalenteri:findCol(H,['Ensimmäinen kalenteroitu työ alkaa']),
+        nimi:findCol(H,['Nimi']),tila:findCol(H,['Tila']),kohdevalmis:findCol(H,['Kohde valmis pvm']),
+      };
+      const parsed=[];
+      for(let i=1;i<rows.length;i++){
+        const r=rows[i];
+        if(!r.some(v=>v!==''&&v!==null&&v!==undefined))continue;
+        const city=normCity(String(r[C.city]||''));
+        const coord=getCoord(city);
+        const etunimi=String(r[C.etunimi]||'').trim();
+        const sukunimi=String(r[C.sukunimi]||'').trim();
+        const displayName=etunimi||sukunimi?[etunimi,sukunimi].filter(Boolean).join(' '):(city||'Tuntematon');
+        parsed.push({
+          displayName,etunimi,sukunimi,
+          lahiosoite:String(r[C.lahiosoite]||'').trim(),
+          postinumero:String(r[C.postinumero]||'').split('.')[0].padStart(5,'0'),
+          city,puhelin:String(r[C.puhelin]||'').replace('tel:','').trim(),
+          toimitusaika:r[C.toimitusaika]||'',hinta:parseFloat(r[C.hinta])||0,
+          asentajat:String(r[C.asentajat]||'').trim(),kansio:String(r[C.kansio]||'').trim(),
+          menekki:String(r[C.menekki]||'').trim(),sopimus:r[C.sopimus]||'',
+          kalenteri:r[C.kalenteri]||'',nimi:String(r[C.nimi]||'').trim(),
+          tila:String(r[C.tila]||'').trim(),kohdevalmis:r[C.kohdevalmis]||'',
+          lat:coord?coord[0]:null,lng:coord?coord[1]:null,ok:!!coord,
+        });
+      }
+      kohteetData=parsed;
+      const total=parsed.length,withCoord=parsed.filter(r=>r.ok).length;
+      // Populate filter dropdowns
+      populateSel('f-tila',[...new Set(kohteetData.map(r=>r.tila).filter(Boolean))].sort(),'Kaikki tilat');
+      populateSel('f-kansio',[...new Set(kohteetData.map(r=>r.kansio).filter(Boolean))].sort(),'Kaikki kansiot');
+      // Split multi-asentaja fields by comma, deduplicate individual names
+const asentajaSet=new Set();
+kohteetData.forEach(r=>{
+  if(r.asentajat)r.asentajat.split(',').forEach(a=>{const t=a.trim();if(t)asentajaSet.add(t);});
+});
+populateSel('f-asentaja',[...asentajaSet].sort(),'Kaikki');
+      const yrs=[...new Set(kohteetData.map(r=>{const d=parseDate(r.kalenteri);return d?d.getFullYear():null;}).filter(Boolean))].sort((a,b)=>b-a);
+      populateSel('f-year',yrs,'Kaikki');
+      applyKohteet();
+      setUploadStatus(`✓ ${total} riviä · ${withCoord} kartalla`,'');
+      showToast(`✓ ${total} kohdetta ladattu`,'ok');
+      [50,200,500].forEach(t=>setTimeout(()=>{if(mapK)mapK.invalidateSize();},t));
+    }catch(err){
+      setUploadStatus('✗ '+err.message,'err');
+      showToast('Virhe: '+err.message,'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function populateSel(id,options,emptyLabel){
+  const el=document.getElementById(id);const cur=el.value;
+  el.innerHTML='';
+  const o=document.createElement('option');o.value='';o.textContent=emptyLabel;el.appendChild(o);
+  options.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;el.appendChild(o);});
+  if(cur)el.value=cur;
+}
+
+// ── KOHTEET FILTER + RENDER ───────────────────────────────────
+function getKohteetRows(){
+  const tila=document.getElementById('f-tila').value;
+  const kansio=document.getElementById('f-kansio').value;
+  const asentaja=document.getElementById('f-asentaja').value;
+  const year=document.getElementById('f-year').value;
+  const month=document.getElementById('f-month').value;
+  const kf=document.getElementById('f-kal-from').value?new Date(document.getElementById('f-kal-from').value):null;
+  const kt=document.getElementById('f-kal-to').value?new Date(document.getElementById('f-kal-to').value):null;
+  const sf=document.getElementById('f-sop-from').value?new Date(document.getElementById('f-sop-from').value):null;
+  const st=document.getElementById('f-sop-to').value?new Date(document.getElementById('f-sop-to').value):null;
+  return kohteetData.filter(r=>{
+    if(tila&&r.tila!==tila)return false;
+    if(kansio&&r.kansio!==kansio)return false;
+    if(asentaja&&!r.asentajat.split(',').map(a=>a.trim()).includes(asentaja))return false;
+    const dk=parseDate(r.kalenteri);
+    if(year&&(!dk||dk.getFullYear()!==+year))return false;
+    if(month&&(!dk||(dk.getMonth()+1)!==+month))return false;
+    if(kf&&dk&&dk<kf)return false;
+    if(kt&&dk&&dk>kt)return false;
+    const ds=parseDate(r.sopimus);
+    if(sf&&ds&&ds<sf)return false;
+    if(st&&ds&&ds>st)return false;
+    return true;
+  });
+}
+
+function applyKohteet(){
+  if(!mapK||!kohteetData.length)return;
+  const rows=getKohteetRows();
+  // Clear markers
+  kMarkers.forEach(m=>m.remove());kMarkers=[];
+  // Add markers
+  rows.filter(r=>r.ok).forEach(r=>{
+    const valmis=r.tila==='Työmaa valmis';
+    const color=valmis?'#22c55e':'#f3702e';
+    const glow=valmis?'rgba(34,197,94,0.5)':'rgba(243,112,46,0.5)';
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="18" height="26" viewBox="0 0 24 34" style="filter:drop-shadow(0 2px 5px ${glow})"><path d="M12 0C5.37 0 0 5.37 0 12c0 8.4 12 22 12 22S24 20.4 24 12C24 5.37 18.63 0 12 0z" fill="${color}"/><circle cx="12" cy="12" r="5" fill="white" opacity="0.9"/></svg>`;
+    const icon=L.divIcon({html:svg,iconSize:[18,26],iconAnchor:[9,26],popupAnchor:[0,-28],className:''});
+    const m=L.marker([r.lat,r.lng],{icon,riseOnHover:true}).addTo(mapK).bindPopup(makeKohteetPopup(r),{maxWidth:260});
+    kMarkers.push(m);
+  });
+  // Render list
+  renderKohteetList(rows);
+  // Update KPIs
+  const rev=rows.reduce((s,r)=>s+(r.hinta||0),0);
+  const done=rows.filter(r=>r.tila==='Työmaa valmis').length;
+  document.getElementById('k-cnt').textContent=rows.length.toLocaleString('fi-FI');
+  document.getElementById('k-done').textContent=done.toLocaleString('fi-FI');
+  document.getElementById('k-rev').textContent=fmtMoney(rev);
+}
+
+function clearKohteet(){
+  ['f-tila','f-kansio','f-asentaja','f-year','f-month','f-kal-from','f-kal-to','f-sop-from','f-sop-to'].forEach(id=>document.getElementById(id).value='');
+  applyKohteet();
+}
+
+function renderKohteetList(rows){
+  const el=document.getElementById('kohteet-list');
+  if(!rows.length){
+    el.innerHTML='<div style="text-align:center;padding:40px 16px;color:var(--muted);font-size:12px">Ei tuloksia</div>';
+    return;
+  }
+  el.innerHTML=rows.slice(0,400).map(r=>`
+    <div class="job-card">
+      <div class="jc-top">
+        <div class="jc-name">${r.displayName}</div>
+        <span class="jc-tila ${tilaClass(r.tila)}">${r.tila||'–'}</span>
+      </div>
+      <div class="jc-addr">${r.city||''} · ${r.lahiosoite||'–'}</div>
+      <div class="jc-meta">
+        <span>${fmtDate(r.kalenteri)||'–'}</span>
+        <span><strong>${r.asentajat||'–'}</strong></span>
+        <span>${fmtMoney(r.hinta)}</span>
+      </div>
+      ${r.menekki?`<div class="jc-comment">💬 ${r.menekki}</div>`:''}
+    </div>`).join('');
+  if(rows.length>400)el.innerHTML+=`<div style="text-align:center;padding:10px;color:var(--muted);font-size:11px">+${rows.length-400} lisää — rajaa suodattimilla</div>`;
+}
+
+function makeKohteetPopup(r){
+  const addr=[r.lahiosoite,r.postinumero,r.city].filter(Boolean).join(', ');
+  const phone=r.puhelin?`<a href="tel:${r.puhelin}" class="popup-phone">📞 ${r.puhelin}</a>`:'';
+  const valmis=r.tila==='Työmaa valmis';
+  const status=valmis
+    ?`<span style="color:#4ade80">✓ Valmis ${fmtDate(r.kohdevalmis)}</span>`
+    :`<span style="color:var(--orange)">${r.tila||'–'}</span>`;
+  const comment=r.menekki?`<div class="popup-comment">💬 ${r.menekki}</div>`:'';
+  return `<div class="popup-body">
+    <div class="popup-top">
+      <div class="popup-name">${r.displayName}</div>
+      <span class="badge ${valmis?'tila-valmis':tilaClass(r.tila)}">${r.tila||'–'}</span>
+    </div>
+    <div class="popup-addr">${addr}</div>
+    ${phone}
+    <div class="popup-meta">
+      <span>Asentaja: <strong>${r.asentajat||'–'}</strong></span>
+      <span>Kalenteri: <strong>${fmtDate(r.kalenteri)||'–'}</strong></span>
+      <span>Sopimus: <strong>${fmtDate(r.sopimus)||'–'}</strong></span>
+      <span>Toimitusaika: <strong>${fmtDate(r.toimitusaika)||'–'}</strong></span>
+      <span>Hinta: <strong style="color:var(--orange)">${r.hinta?r.hinta.toFixed(2)+' €':'–'}</strong></span>
+      <span>${status}</span>
+    </div>
+    ${comment}
+  </div>`;
+}
+
+// ── DEALER MAP ───────────────────────────────────────────────
+function dealerIcon(type){const c=type==='installer'?'#f3702e':'#2563eb';const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="34" viewBox="0 0 24 34"><path d="M12 0C5.37 0 0 5.37 0 12c0 8.4 12 22 12 22S24 20.4 24 12C24 5.37 18.63 0 12 0z" fill="${c}"/><circle cx="12" cy="12" r="5.5" fill="white" opacity="0.95"/></svg>`;return L.divIcon({html:svg,iconSize:[24,34],iconAnchor:[12,34],popupAnchor:[0,-34],className:''});}
+function addDealerMarker(d){if(dMarkers[d.id]){dMarkers[d.id].remove();delete dMarkers[d.id];}if(!d.lat||!d.lng||isNaN(d.lat)||isNaN(d.lng))return;const m=L.marker([+d.lat,+d.lng],{icon:dealerIcon(d.type)}).addTo(mapD).bindPopup(dealerPopup(d));m.on('click',()=>selDealer(d.id));dMarkers[d.id]=m;}
+function dealerPopup(d){const tags=(d.services||[]).map(s=>`<span class="tag">${s}</span>`).join('');const ph=d.phone?`<a href="tel:${d.phone}" class="popup-phone">📞 ${d.phone}</a>`:'';return `<div class="popup-body"><div class="popup-top"><div class="popup-name">${d.name}</div><span class="badge ${d.type==='installer'?'inst':'res'}">${d.type==='installer'?'Asentaja':'Jälleenmyyjä'}</span></div><div class="popup-addr">${d.address}</div>${ph}<div class="popup-tags">${tags}</div></div>`;}
+function selDealer(id){selId=id;renderDealerList();if(dMarkers[id])dMarkers[id].openPopup();}
+async function loadDealers(manual=false){
+  setSyncStatus('busy');
+  if(manual)showToast('Ladataan…','inf');
+  try{
+    const edits=JSON.parse(sessionStorage.getItem('dealer_edits')||'[]');
+    dealers=HARDCODED_DEALERS.map(d=>({...d}));
+    edits.forEach(e=>{
+      if(e.action==='add')dealers.push(e.dealer);
+      else if(e.action==='update'){const i=dealers.findIndex(d=>d.id===e.dealer.id);if(i>=0)dealers[i]=e.dealer;}
+      else if(e.action==='delete')dealers=dealers.filter(d=>d.id!==e.id);
+    });
+    Object.values(dMarkers).forEach(m=>m.remove());dMarkers={};
+    dealers.forEach(addDealerMarker);
+    applyDealerFilters();renderDealerTable();setSyncStatus('ok');
+    document.getElementById('loader').classList.add('gone');
+    if(manual)showToast('✓ Ladattu','ok');
+  }catch(e){setSyncStatus('bad');document.getElementById('loader').classList.add('gone');showToast('Virhe: '+e.message,'err');}
+}
+function setDealerType(t){dType=t;document.querySelectorAll('#page-dealers .pill').forEach(p=>p.classList.toggle('on',p.dataset.t===t));applyDealerFilters();}
+function getFilteredDealers(){const q=(document.getElementById('d-search').value||'').toLowerCase();return dealers.filter(d=>(dType==='all'||d.type===dType)&&(!q||d.name.toLowerCase().includes(q)||d.address.toLowerCase().includes(q))&&(dFilters.size===0||[...dFilters].some(f=>(d.services||[]).includes(f))));}
+function applyDealerFilters(){const f=getFilteredDealers();renderDealerList(f);Object.values(dMarkers).forEach(m=>m.remove());f.forEach(d=>{if(dMarkers[d.id])dMarkers[d.id].addTo(mapD);});buildSvcFilters();document.getElementById('cnt-inst').textContent=dealers.filter(d=>d.type==='installer').length;document.getElementById('cnt-res').textContent=dealers.filter(d=>d.type==='reseller').length;}
+function buildSvcFilters(){const el=document.getElementById('svc-filters');el.innerHTML='';SVCS.forEach(s=>{const cnt=dealers.filter(d=>(d.services||[]).includes(s)).length;const on=dFilters.has(s);const row=document.createElement('label');row.className='svc-row'+(on?' on':'');row.innerHTML=`<div class="svc-check">${on?'<svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3l2 2 4-4" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>':''}</div><span class="svc-name">${s}</span><span class="svc-count">${cnt}</span>`;row.onclick=()=>{dFilters.has(s)?dFilters.delete(s):dFilters.add(s);applyDealerFilters();};el.appendChild(row);});}
+function renderDealerList(list){if(!list)list=dealers;const el=document.getElementById('dealer-list');if(!list.length){el.innerHTML='<div style="text-align:center;padding:32px 20px;color:var(--muted);font-size:13px">🔍 Ei tuloksia.</div>';return;}el.innerHTML=list.map(d=>`<div class="dealer-card${selId===d.id?' active':''}" onclick="selDealer(${d.id})"><div class="card-top"><div class="card-name">${d.name}</div><span class="badge ${d.type==='installer'?'inst':'res'}">${d.type==='installer'?'Asentaja':'Jälleenmyyjä'}</span></div><div class="card-addr">${d.address}</div><div class="tag-row">${(d.services||[]).map(s=>`<span class="tag">${s}</span>`).join('')}</div></div>`).join('');}
+
+
+// ── EDIT MODAL ────────────────────────────────────────────────
+function openModal(id){
+  editId=id||null;const d=id?dealers.find(x=>x.id===id):null;
+  document.getElementById('modal-title').textContent=d?'Muokkaa asentajaa':'Lisää asentaja';
+  document.getElementById('m-name').value=d?.name||'';document.getElementById('m-addr').value=d?.address||'';
+  document.getElementById('m-lat').value=d?.lat||'';document.getElementById('m-lng').value=d?.lng||'';
+  document.getElementById('m-phone').value=d?.phone||'';document.getElementById('m-del').style.display=d?'inline-block':'none';
+  document.getElementById('geo-status').textContent='';if(document.getElementById('m-notes'))document.getElementById('m-notes').value=d?.notes||'';setModalType(d?.type||'installer');
+  const svcs=document.getElementById('m-svcs');svcs.innerHTML='';
+  SVCS.forEach(s=>{const on=(d?.services||[]).includes(s);const b=document.createElement('button');b.className='svc-tog'+(on?' on':'');b.textContent=s;b.onclick=()=>b.classList.toggle('on');svcs.appendChild(b);});
+  document.getElementById('overlay').classList.add('open');
+}
+function closeModal(){document.getElementById('overlay').classList.remove('open');}
+function setModalType(t){modalType=t;document.getElementById('tbtn-inst').classList.toggle('on',t==='installer');document.getElementById('tbtn-res').classList.toggle('on',t==='reseller');}
+async function geocodeAddr(){
+  const addr=document.getElementById('m-addr').value.trim();if(!addr)return;
+  const gs=document.getElementById('geo-status');gs.textContent='Haetaan…';gs.className='geo-status';
+  try{const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr+', Finland')}&limit=1`);const d=await r.json();
+    if(d[0]){document.getElementById('m-lat').value=parseFloat(d[0].lat).toFixed(5);document.getElementById('m-lng').value=parseFloat(d[0].lon).toFixed(5);gs.textContent='✓ '+d[0].display_name.split(',').slice(0,2).join(',');gs.className='geo-status ok';}
+    else{gs.textContent='Osoitetta ei löydy';gs.className='geo-status err';}}
+  catch(e){gs.textContent='Verkkovirhe';gs.className='geo-status err';}
+}
+async function saveDealer(){
+  const name=document.getElementById('m-name').value.trim();
+  const addr=document.getElementById('m-addr').value.trim();
+  if(!name)return showToast('Nimi on pakollinen','err');
+  if(!addr)return showToast('Osoite on pakollinen','err');
+  let lat=parseFloat(document.getElementById('m-lat').value);
+  let lng=parseFloat(document.getElementById('m-lng').value);
+  if(isNaN(lat)||isNaN(lng)){
+    showToast('Haetaan koordinaatteja…','inf');
+    try{const gr=await fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(addr+', Finland')+'&limit=1');
+      const gd=await gr.json();
+      if(gd[0]){lat=parseFloat(gd[0].lat);lng=parseFloat(gd[0].lon);
+        document.getElementById('m-lat').value=lat.toFixed(5);
+        document.getElementById('m-lng').value=lng.toFixed(5);}
+    }catch(e){}
+    if(isNaN(lat)||isNaN(lng)){lat=64.5;lng=26.0;}
+  }
+  const svcs=[...document.getElementById('m-svcs').children].filter(b=>b.classList.contains('on')).map(b=>b.textContent);
+  const notes=document.getElementById('m-notes')?document.getElementById('m-notes').value.trim():'';
+  const dealer={id:editId||(Date.now()),name,address:addr,lat,lng,type:modalType,phone:document.getElementById('m-phone').value.trim(),services:svcs,notes};
+  const edits=JSON.parse(sessionStorage.getItem('dealer_edits')||'[]');
+  if(editId){
+    const isHard=HARDCODED_DEALERS.some(d=>d.id===editId);
+    if(isHard){const existing=edits.findIndex(e=>e.action==='update'&&e.dealer.id===editId);if(existing>=0)edits[existing]={action:'update',dealer};else edits.push({action:'update',dealer});}
+    else{const i=edits.findIndex(e=>e.dealer&&e.dealer.id===editId);if(i>=0)edits[i]={action:'update',dealer};}
+  }else{
+    edits.push({action:'add',dealer});
+  }
+  sessionStorage.setItem('dealer_edits',JSON.stringify(edits));
+  showToast(editId?'✓ Päivitetty':'✓ Lisätty','ok');
+  closeModal();loadDealers();
+}
+async function deleteDealer(){
+  if(!editId)return;
+  if(!confirm('Poistetaanko tämä merkintä?'))return;
+  const edits=JSON.parse(sessionStorage.getItem('dealer_edits')||'[]');
+  const isHard=HARDCODED_DEALERS.some(d=>d.id===editId);
+  if(isHard){edits.push({action:'delete',id:editId});}
+  else{const i=edits.findIndex(e=>e.action==='add'&&e.dealer.id===editId);if(i>=0)edits.splice(i,1);}
+  sessionStorage.setItem('dealer_edits',JSON.stringify(edits));
+  showToast('✓ Poistettu','ok');closeModal();loadDealers();
+}
+function renderDealerTable(){
+  const countEl=document.getElementById('edit-count');
+  if(countEl){const inst=dealers.filter(d=>d.type==='installer').length;const res=dealers.filter(d=>d.type==='reseller').length;countEl.textContent=`${inst} asentajaa · ${res} jälleenmyyjää`;}
+  if(!dealers.length){
+    document.getElementById('dealer-tbody').innerHTML=`<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted)">Ei tietoja — tarkista yhteys</td></tr>`;
+    return;
+  }
+  document.getElementById('dealer-tbody').innerHTML=dealers.map(d=>`<tr>
+    <td style="font-weight:700">${d.name}</td>
+    <td><span class="badge ${d.type==='installer'?'inst':'res'}">${d.type==='installer'?'Asentaja':'Jälleenmyyjä'}</span></td>
+    <td style="font-size:11px;color:var(--muted)">${d.address}</td>
+    <td><div class="tag-mini">${SVCS.map(s=>`<span class="${(d.services||[]).includes(s)?'on':'off'}">${s.substring(0,3)}</span>`).join('')}</div></td>
+    <td style="font-size:10px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.notes||''}</td>
+    <td><button class="btn-ghost" onclick="openModal(${d.id})">✏️</button></td>
+  </tr>`).join('');
+}
+
+
+
+// ── MAPS INIT ─────────────────────────────────────────────────
+const TILE='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const MOPT={zoomControl:true,attributionControl:false};
+mapD=L.map('map-dealers',MOPT).setView([64.5,26.0],5);
+mapK=L.map('map-kohteet',MOPT).setView([64.5,26.0],5);
+[mapD,mapK].forEach(m=>L.tileLayer(TILE,{maxZoom:19,subdomains:'abc'}).addTo(m));
+
+// ── INIT ─────────────────────────────────────────────────────
+loadDealers();
+</script>
+
+<script>
+// Swipe up/down to open/close sidebar on mobile
+(function(){
+  var sy=0,sx=0;
+  document.addEventListener('touchstart',function(e){sy=e.touches[0].clientY;sx=e.touches[0].clientX;},{passive:true});
+  document.addEventListener('touchend',function(e){
+    var dy=sy-e.changedTouches[0].clientY;
+    var dx=Math.abs(sx-e.changedTouches[0].clientX);
+    var sb=document.querySelector('.sidebar');
+    if(!sb||dx>50)return;
+    if(dy>60&&!sb.classList.contains('open'))toggleSidebar();
+    if(dy<-60&&sb.classList.contains('open'))toggleSidebar();
+  },{passive:true});
+})();
+</script>
+</body>
+</html>
