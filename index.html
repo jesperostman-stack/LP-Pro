@@ -239,85 +239,22 @@ tbody td{padding:10px;vertical-align:middle;}
 .sb-pull-label{font-size:12px;font-weight:600;color:var(--muted);}
 .sb-pull-label span{color:var(--orange);font-weight:700;}
 
-@media(max-width:700px){
-  .header{padding:0 12px;}
-  .logo-text{font-size:13px;}
-  .sync-label{display:none;}
-  .nav-tabs{display:none;}
-  .tab-bar{display:flex;}
 
-  /* On mobile, pages stack vertically */
-  #page-dealers.active,#page-kohteet.active{flex-direction:column;}
-  #page-edit.active{flex-direction:column;overflow-y:auto;}
 
-  /* Map takes remaining space above the sidebar sheet */
-  .map-wrap{flex:1;min-height:200px;}
-
-  /* Filter bar wraps */
-  .filter-bar{height:auto;min-height:52px;padding:6px 10px;flex-wrap:wrap;gap:6px;overflow:visible;}
-  .fb-chip{flex-shrink:1;min-width:0;}
-  .fb-select{min-width:80px;max-width:120px;font-size:16px;}
-  .fb-date{width:100px;font-size:16px;}
-  .fb-divider{display:none;}
-  .fb-sep{margin-top:0;}
-  .fb-clear,.upload-btn{height:30px;font-size:11px;margin-top:0;}
-  .upload-status-bar{max-width:100px;font-size:9px;}
-
-  /* Sidebar becomes bottom sheet */
-  .sidebar{
-    position:relative!important;
-    width:100%!important;
-    border-left:none!important;
-    border-top:2px solid var(--border2)!important;
-    border-radius:18px 18px 0 0!important;
-    max-height:52px!important;
-    overflow:hidden!important;
-    transition:max-height .3s cubic-bezier(.32,.72,0,1)!important;
-    flex-shrink:0!important;
-  }
-  .sidebar.open{max-height:68vh!important;}
-  .sb-pull{display:flex!important;}
-  .kpi-bar{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;}
-  .kpi-bar::-webkit-scrollbar{display:none;}
-  .kpi-cell{padding:6px 10px;min-width:70px;}
-  .kpi-val{font-size:15px;}
-  .kpi-lbl{font-size:8px;}
-
-  /* Edit table */
-  .edit-header{padding:12px 14px;flex-wrap:wrap;gap:8px;}
-  .edit-title{font-size:13px;}
-  .edit-table-wrap{padding:10px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  table{min-width:500px;font-size:11px;}
-  thead th{font-size:8px;padding:0 8px 8px;}
-  tbody td{padding:8px;}
-
-  /* Touch */
-  .btn-ghost,.btn-primary{min-height:38px;}
-  .svc-tog{min-height:36px;}
-  .form-input{font-size:16px!important;}
-  .modal-sheet{border-radius:20px 20px 0 0!important;max-height:95vh!important;}
-  .toast{bottom:72px;}
-  .leaflet-popup-content{width:260px!important;}
-  .leaflet-control-zoom{margin:0 10px 70px 0!important;}
-}
-@media(max-width:380px){
-  .fb-select{min-width:65px;max-width:100px;}
   .fb-date{width:88px;}
   .kpi-val{font-size:13px;}
 }
 
-@media(max-width:380px){
-  .fb-select{min-width:65px;max-width:100px;}
+
   .fb-date{width:88px;}
   .kpi-val{font-size:13px;}
-}@media(max-width:380px){
-  .fb-select{min-width:65px;max-width:100px;}
+}
   .fb-date{width:88px;}
   .kpi-val{font-size:13px;}
 }
 
 /* ── LOGIN ───────────────────────────────────────────────── */
-.login-screen{position:fixed;inset:0;background:var(--bg);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+.login-screen{position:fixed;top:0;left:0;width:100vw;height:100vh;background:#0f0e0e;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
 .login-box{background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:40px 36px;width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center;gap:20px;box-shadow:0 24px 80px rgba(0,0,0,0.6);}
 .login-logo{width:56px;height:56px;background:var(--orange);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;}
 .login-title{font-family:'Syne',sans-serif;font-weight:800;font-size:24px;text-align:center;}
@@ -330,17 +267,75 @@ tbody td{padding:10px;vertical-align:middle;}
 .login-btn:active{transform:scale(.98);}
 .login-err{font-size:12px;color:#f87171;min-height:16px;text-align:center;font-weight:500;}
 
-/* ── LAYOUT (single source of truth) ────────────────────── */
-.app-body{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
-.page{display:none;flex:1;min-height:0;}
-.page.active{display:flex;flex:1;min-height:0;}
-#page-dealers.active{flex-direction:row;}
-#page-kohteet.active{flex-direction:row;}
+
+
+
+
+
+
+
+
+
+
+
+/* ── LAYOUT ─────────────────────────────────────────────── */
+html,body{height:100%;overflow:hidden;}
+.app-body{flex:1;overflow:hidden;display:flex;flex-direction:column;position:relative;}
+.page{display:none;flex:1;overflow:hidden;}
+.page.active{display:flex;}
+#page-dealers.active,#page-kohteet.active{flex-direction:row;}
 #page-edit{background:var(--bg);}
-#page-edit.active{flex-direction:column;overflow-y:auto;}
-.map-wrap{flex:1;min-height:0;position:relative;overflow:hidden;}
+#page-edit.active{flex-direction:column;}
+.map-wrap{flex:1;position:relative;overflow:hidden;}
 #map-dealers,#map-kohteet{position:absolute;inset:0;}
 
+/* Desktop: sidebar on right */
+@media(min-width:641px){
+  .sb-pull{display:none!important;}
+  .tab-bar{display:none!important;}
+  .sidebar{width:300px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;position:static!important;transform:none!important;max-height:none!important;height:auto!important;}
+}
+
+/* ── MOBILE ─────────────────────────────────────────────── */
+@media(max-width:640px){
+  .header{padding:0 12px;}
+  .sync-label{display:none;}
+  .nav-tabs{display:none;}
+  .tab-bar{display:flex;}
+
+  #page-dealers.active,#page-kohteet.active{flex-direction:column;position:relative;}
+  #page-edit.active{overflow-y:auto;}
+
+  .map-wrap{flex:1;min-height:0;}
+
+  .sidebar{
+    position:relative!important;width:100%!important;
+    border-left:none!important;border-top:2px solid var(--border2)!important;
+    border-radius:18px 18px 0 0!important;
+    max-height:52px!important;overflow:hidden!important;
+    transition:max-height .3s cubic-bezier(.32,.72,0,1)!important;
+    flex-shrink:0!important;box-shadow:0 -8px 30px rgba(0,0,0,0.4)!important;
+  }
+  .sidebar.open{max-height:68vh!important;}
+  .sb-pull{display:flex!important;}
+
+  .kpi-bar{overflow-x:auto;}.kpi-bar::-webkit-scrollbar{display:none;}
+  .kpi-cell{padding:6px 10px;min-width:70px;}.kpi-val{font-size:15px;}.kpi-lbl{font-size:8px;}
+
+  .filter-bar{height:auto;min-height:52px;padding:6px 10px;flex-wrap:wrap;gap:6px;overflow:visible;}
+  .fb-select,.fb-date{font-size:16px;}
+  .fb-divider{display:none;}
+  .fb-clear,.upload-btn{height:30px;margin-top:0;}
+
+  .edit-header{flex-wrap:wrap;gap:8px;}
+  .edit-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table{min-width:500px;}
+
+  .form-input{font-size:16px!important;}
+  .modal-sheet{border-radius:20px 20px 0 0!important;max-height:95vh!important;}
+  .toast{bottom:72px;}
+  .leaflet-control-zoom{margin:0 10px 70px 0!important;}
+}
 </style>
 <script>
 function doLogin(){
@@ -364,127 +359,7 @@ document.addEventListener('DOMContentLoaded',function(){
 </script>
 </head>
 <body>
-<div class="login-screen" id="login-screen">
-  <div class="login-box">
-    <div class="login-logo">🔥</div>
-    <div class="login-title">LP Pro</div>
-    <div class="login-sub">Kirjoita salasana jatkaaksesi</div>
-    <input class="login-input" id="login-pw" type="password" placeholder="Salasana" autocomplete="off"/>
-    <div class="login-err" id="login-err"></div>
-    <button class="login-btn" id="login-btn">Kirjaudu sisään →</button>
-  </div>
-</div>
 
-<div class="loading-screen" id="loader">
-  <div class="spinner"></div>
-  <div class="loading-label">Ladataan…</div>
-</div>
-
-<!-- HEADER -->
-<header class="header">
-  <div class="logo">
-    <div class="logo-icon">🔥</div>
-    <div class="logo-text">LP <em>Pro</em></div>
-  </div>
-  <nav class="nav-tabs">
-    <button class="nav-tab active" onclick="showPage('dealers',this)">🗺 Asentajat</button>
-    <button class="nav-tab" onclick="showPage('kohteet',this)">📍 Kohteet</button>
-    <button class="nav-tab" onclick="showPage('edit',this)">✏️ Muokkaa</button>
-  </nav>
-  <div class="header-right">
-    <div style="display:flex;align-items:center;gap:5px;">
-      <div class="dot" id="sync-dot"></div>
-      <span class="sync-label" id="sync-label">Yhdistetty</span>
-    </div>
-  </div>
-</header>
-
-<!-- KOHTEET FILTER BAR -->
-<div class="filter-bar" id="kohteet-filters" style="display:none;">
-  <div class="fb-chip">
-    <span class="fb-label">Tila</span>
-    <select class="fb-select" id="f-tila" onchange="applyKohteet()"><option value="">Kaikki tilat</option></select>
-  </div>
-  <div class="fb-chip">
-    <span class="fb-label">Kansio</span>
-    <select class="fb-select" id="f-kansio" onchange="applyKohteet()"><option value="">Kaikki kansiot</option></select>
-  </div>
-  <div class="fb-chip">
-    <span class="fb-label">Asentaja</span>
-    <select class="fb-select" id="f-asentaja" onchange="applyKohteet()" style="min-width:130px;"><option value="">Kaikki</option></select>
-  </div>
-  <div class="fb-divider"></div>
-  <div class="fb-chip">
-    <span class="fb-label">Vuosi</span>
-    <select class="fb-select" id="f-year" onchange="applyKohteet()" style="min-width:72px;"><option value="">Kaikki</option></select>
-  </div>
-  <div class="fb-chip">
-    <span class="fb-label">Kuukausi</span>
-    <select class="fb-select" id="f-month" onchange="applyKohteet()">
-      <option value="">Kaikki</option>
-      <option value="1">Tammi</option><option value="2">Helmi</option><option value="3">Maalis</option>
-      <option value="4">Huhti</option><option value="5">Touko</option><option value="6">Kesä</option>
-      <option value="7">Heinä</option><option value="8">Elo</option><option value="9">Syys</option>
-      <option value="10">Loka</option><option value="11">Marras</option><option value="12">Joulu</option>
-    </select>
-  </div>
-  <div class="fb-divider"></div>
-  <div class="fb-chip">
-    <span class="fb-label">Kal. työ alkaen</span>
-    <input type="date" class="fb-date" id="f-kal-from" onchange="applyKohteet()"/>
-  </div>
-  <span class="fb-sep">–</span>
-  <div class="fb-chip">
-    <span class="fb-label">&nbsp;</span>
-    <input type="date" class="fb-date" id="f-kal-to" onchange="applyKohteet()"/>
-  </div>
-  <div class="fb-divider"></div>
-  <div class="fb-chip">
-    <span class="fb-label">Sopimus alkaen</span>
-    <input type="date" class="fb-date" id="f-sop-from" onchange="applyKohteet()"/>
-  </div>
-  <span class="fb-sep">–</span>
-  <div class="fb-chip">
-    <span class="fb-label">&nbsp;</span>
-    <input type="date" class="fb-date" id="f-sop-to" onchange="applyKohteet()"/>
-  </div>
-  <div class="fb-divider"></div>
-  <button class="fb-clear" onclick="clearKohteet()">✕ Tyhjennä</button>
-  <button class="upload-btn" onclick="document.getElementById('kohteet-file').click()">📂 Lataa Excel</button>
-  <input type="file" id="kohteet-file" accept=".xlsx,.xls" style="display:none" onchange="handleKohteetFile(this)"/>
-  <span class="upload-status-bar" id="kohteet-status"></span>
-</div>
-
-<div class="app-body">
-
-  <!-- ASENTAJAT PAGE -->
-  <div class="page active" id="page-dealers">
-    <div class="map-wrap"><div id="map-dealers"></div></div>
-    <div class="sidebar" id="sb-dealers">
-      <div class="sb-pull" id="sb-pull" onclick="toggleSidebar()"><div class="sb-pull-bar"></div><span class="sb-pull-label" id="sb-pull-label">Lista ▴</span></div>
-        <span class="sb-pull-label">Näytä lista</span>
-      </div>
-      <div class="sb-section">
-        <div class="search-box">
-          <span class="search-icon">🔍</span>
-          <input id="d-search" placeholder="Hae nimellä tai kaupungilla…" oninput="applyDealerFilters()"/>
-        </div>
-      </div>
-      <div class="sb-section">
-        <div class="sb-label">Tyyppi</div>
-        <div class="pill-row">
-          <span class="pill all on" data-t="all" onclick="setDealerType('all')">Kaikki</span>
-          <span class="pill inst" data-t="installer" onclick="setDealerType('installer')">🔧 Asentajat <strong id="cnt-inst">0</strong></span>
-          <span class="pill res" data-t="reseller" onclick="setDealerType('reseller')">🏪 Jälleenmyyjät <strong id="cnt-res">0</strong></span>
-        </div>
-      </div>
-      <div class="sb-section">
-        <div class="sb-label">Palvelut</div>
-        <div class="svc-filters" id="svc-filters"></div>
-      </div>
-      <div class="scroll-list" id="dealer-list"></div>
-    </div>
-  </div>
 
   <!-- KOHTEET PAGE -->
   <div class="page" id="page-kohteet">
@@ -629,7 +504,6 @@ function toggleSidebar(){
   const lbl=document.getElementById('sb-pull-label');
   if(lbl)lbl.textContent=sb.classList.contains('open')?'Sulje ▾':'Lista ▴';
   setTimeout(()=>{if(mapK)mapK.invalidateSize();if(mapD)mapD.invalidateSize();},320);
-},310);
 }
 // ── STATE ─────────────────────────────────────────────────────
 let dealers=[],dMarkers={},selId=null,dType='all',dFilters=new Set();
@@ -1010,5 +884,126 @@ initMaps();
   },{passive:true});
 })();
 </script>
+<div class="login-screen" id="login-screen" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:2147483647;background:#0f0e0e;">
+  <div class="login-box">
+    <div class="login-logo">🔥</div>
+    <div class="login-title">LP Pro</div>
+    <div class="login-sub">Kirjoita salasana jatkaaksesi</div>
+    <input class="login-input" id="login-pw" type="password" placeholder="Salasana" autocomplete="off"/>
+    <div class="login-err" id="login-err"></div>
+    <button class="login-btn" id="login-btn">Kirjaudu sisään →</button>
+  </div>
+</div>
+
+<div class="loading-screen" id="loader">
+  <div class="spinner"></div>
+  <div class="loading-label">Ladataan…</div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">🔥</div>
+    <div class="logo-text">LP <em>Pro</em></div>
+  </div>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('dealers',this)">🗺 Asentajat</button>
+    <button class="nav-tab" onclick="showPage('kohteet',this)">📍 Kohteet</button>
+    <button class="nav-tab" onclick="showPage('edit',this)">✏️ Muokkaa</button>
+  </nav>
+  <div class="header-right">
+    <div style="display:flex;align-items:center;gap:5px;">
+      <div class="dot" id="sync-dot"></div>
+      <span class="sync-label" id="sync-label">Yhdistetty</span>
+    </div>
+  </div>
+</header>
+
+<!-- KOHTEET FILTER BAR -->
+<div class="filter-bar" id="kohteet-filters" style="display:none;">
+  <div class="fb-chip">
+    <span class="fb-label">Tila</span>
+    <select class="fb-select" id="f-tila" onchange="applyKohteet()"><option value="">Kaikki tilat</option></select>
+  </div>
+  <div class="fb-chip">
+    <span class="fb-label">Kansio</span>
+    <select class="fb-select" id="f-kansio" onchange="applyKohteet()"><option value="">Kaikki kansiot</option></select>
+  </div>
+  <div class="fb-chip">
+    <span class="fb-label">Asentaja</span>
+    <select class="fb-select" id="f-asentaja" onchange="applyKohteet()" style="min-width:130px;"><option value="">Kaikki</option></select>
+  </div>
+  <div class="fb-divider"></div>
+  <div class="fb-chip">
+    <span class="fb-label">Vuosi</span>
+    <select class="fb-select" id="f-year" onchange="applyKohteet()" style="min-width:72px;"><option value="">Kaikki</option></select>
+  </div>
+  <div class="fb-chip">
+    <span class="fb-label">Kuukausi</span>
+    <select class="fb-select" id="f-month" onchange="applyKohteet()">
+      <option value="">Kaikki</option>
+      <option value="1">Tammi</option><option value="2">Helmi</option><option value="3">Maalis</option>
+      <option value="4">Huhti</option><option value="5">Touko</option><option value="6">Kesä</option>
+      <option value="7">Heinä</option><option value="8">Elo</option><option value="9">Syys</option>
+      <option value="10">Loka</option><option value="11">Marras</option><option value="12">Joulu</option>
+    </select>
+  </div>
+  <div class="fb-divider"></div>
+  <div class="fb-chip">
+    <span class="fb-label">Kal. työ alkaen</span>
+    <input type="date" class="fb-date" id="f-kal-from" onchange="applyKohteet()"/>
+  </div>
+  <span class="fb-sep">–</span>
+  <div class="fb-chip">
+    <span class="fb-label">&nbsp;</span>
+    <input type="date" class="fb-date" id="f-kal-to" onchange="applyKohteet()"/>
+  </div>
+  <div class="fb-divider"></div>
+  <div class="fb-chip">
+    <span class="fb-label">Sopimus alkaen</span>
+    <input type="date" class="fb-date" id="f-sop-from" onchange="applyKohteet()"/>
+  </div>
+  <span class="fb-sep">–</span>
+  <div class="fb-chip">
+    <span class="fb-label">&nbsp;</span>
+    <input type="date" class="fb-date" id="f-sop-to" onchange="applyKohteet()"/>
+  </div>
+  <div class="fb-divider"></div>
+  <button class="fb-clear" onclick="clearKohteet()">✕ Tyhjennä</button>
+  <button class="upload-btn" onclick="document.getElementById('kohteet-file').click()">📂 Lataa Excel</button>
+  <input type="file" id="kohteet-file" accept=".xlsx,.xls" style="display:none" onchange="handleKohteetFile(this)"/>
+  <span class="upload-status-bar" id="kohteet-status"></span>
+</div>
+
+<div class="app-body">
+
+  <!-- ASENTAJAT PAGE -->
+  <div class="page active" id="page-dealers">
+    <div class="map-wrap"><div id="map-dealers"></div></div>
+    <div class="sidebar" id="sb-dealers">
+      <div class="sb-pull" id="sb-pull" onclick="toggleSidebar()"><div class="sb-pull-bar"></div><span class="sb-pull-label" id="sb-pull-label">Lista ▴</span></div>
+        <span class="sb-pull-label">Näytä lista</span>
+      </div>
+      <div class="sb-section">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input id="d-search" placeholder="Hae nimellä tai kaupungilla…" oninput="applyDealerFilters()"/>
+        </div>
+      </div>
+      <div class="sb-section">
+        <div class="sb-label">Tyyppi</div>
+        <div class="pill-row">
+          <span class="pill all on" data-t="all" onclick="setDealerType('all')">Kaikki</span>
+          <span class="pill inst" data-t="installer" onclick="setDealerType('installer')">🔧 Asentajat <strong id="cnt-inst">0</strong></span>
+          <span class="pill res" data-t="reseller" onclick="setDealerType('reseller')">🏪 Jälleenmyyjät <strong id="cnt-res">0</strong></span>
+        </div>
+      </div>
+      <div class="sb-section">
+        <div class="sb-label">Palvelut</div>
+        <div class="svc-filters" id="svc-filters"></div>
+      </div>
+      <div class="scroll-list" id="dealer-list"></div>
+    </div>
+  </div>
 </body>
 </html>
