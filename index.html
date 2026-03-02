@@ -343,6 +343,7 @@ function doLogin(){
   var err=document.getElementById('login-err');
   if(pw==='202520272026'){
     document.getElementById('login-screen').style.display='none';
+    setTimeout(function(){if(typeof initMaps==='function')initMaps();},50);
   } else {
     err.textContent='Väärä salasana. Yritä uudelleen.';
     document.getElementById('login-pw').value='';
@@ -866,7 +867,7 @@ function initMaps(){
 }
 
 // ── INIT ─────────────────────────────────────────────────────
-initMaps();
+// initMaps() is called after login
 </script>
 
 <script>
