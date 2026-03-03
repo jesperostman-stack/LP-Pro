@@ -26,14 +26,14 @@
 html{height:100%;}
 body{height:100%;overflow:hidden;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;}
 button,input,select,textarea{font-family:inherit;}
-.app-body{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;}
+.app-body{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;}
 .page{display:none;flex:1;min-height:0;overflow:hidden;}
-.page.active{display:flex;flex:1;min-height:0;}
+.page.active{display:flex;flex:1;min-height:0;overflow:hidden;}
 #page-dealers.active{flex-direction:row;}
 #page-kohteet.active{flex-direction:column;}
 #page-edit{background:var(--bg);}
-#page-edit.active{flex-direction:column;overflow:hidden;}
-.map-wrap{flex:1;min-height:0;position:relative;overflow:hidden;}
+#page-edit.active{flex-direction:column;flex:1;min-height:0;overflow:hidden;}
+.map-wrap{flex:1;min-height:0;min-width:0;position:relative;overflow:hidden;}
 #map-dealers,#map-kohteet{position:absolute;inset:0;width:100%;height:100%;}
 
 /* ── LOADING ─────────────────────────────────────────────── */
@@ -431,7 +431,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <input type="file" id="kohteet-file" accept=".xlsx,.xls" style="display:none" onchange="handleKohteetFile(this)"/>
   <span class="upload-status-bar" id="kohteet-status"></span>
 </div>
-    <div style="flex:1;min-height:0;display:flex;flex-direction:row;overflow:hidden;">
+    <div style="flex:1;min-height:0;min-width:0;display:flex;flex-direction:row;overflow:hidden;">
     <div class="map-wrap">
       <div id="map-kohteet"></div>
       <div class="map-legend">
@@ -613,10 +613,14 @@ function showPage(name,btn){
   const sb=document.querySelector('.sidebar');if(sb)sb.classList.remove('open');
   const lbl=document.getElementById('sb-pull-label');if(lbl)lbl.textContent='Lista ▴';
   // Give browser time to make div visible before Leaflet measures it
+  // Wait for filter bar to render, then measure map
   setTimeout(()=>{
-    if(name==='dealers'&&mapD){mapD.invalidateSize();mapD.invalidateSize();}
-    if(name==='kohteet'&&mapK){mapK.invalidateSize();mapK.invalidateSize();}
-  },100);
+    if(name==='dealers'&&mapD){mapD.invalidateSize();}
+    if(name==='kohteet'&&mapK){mapK.invalidateSize();}
+  },50);
+  setTimeout(()=>{
+    if(name==='kohteet'&&mapK){mapK.invalidateSize();}
+  },200);
 }
 
 // ── EXCEL UPLOAD ──────────────────────────────────────────────
