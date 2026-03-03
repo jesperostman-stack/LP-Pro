@@ -769,7 +769,7 @@ function dealerIcon(type){const c=type==='installer'?'#f3702e':'#2563eb';const s
 function addDealerMarker(d){if(dMarkers[d.id]){dMarkers[d.id].remove();delete dMarkers[d.id];}if(!d.lat||!d.lng||isNaN(d.lat)||isNaN(d.lng))return;const m=L.marker([+d.lat,+d.lng],{icon:dealerIcon(d.type)}).addTo(mapD).bindPopup(dealerPopup(d));m.on('click',()=>selDealer(d.id));dMarkers[d.id]=m;}
 function dealerPopup(d){const tags=(d.services||[]).map(s=>`<span class="tag">${s}</span>`).join('');const ph=d.phone?`<a href="tel:${d.phone}" class="popup-phone">📞 ${d.phone}</a>`:'';return `<div class="popup-body"><div class="popup-top"><div class="popup-name">${d.name}</div><span class="badge ${d.type==='installer'?'inst':'res'}">${d.type==='installer'?'Asentaja':'Jälleenmyyjä'}</span></div><div class="popup-addr">${d.address}</div>${ph}<div class="popup-tags">${tags}</div></div>`;}
 function selDealer(id){selId=id;renderDealerList();if(dMarkers[id])dMarkers[id].openPopup();}
-async function loadDealers(manual=false){
+function loadDealers(manual=false){
   setSyncStatus('busy');
   if(manual)showToast('Ladataan…','inf');
   try{
@@ -815,57 +815,71 @@ function openModal(id){
 }
 function closeModal(){document.getElementById('overlay').classList.remove('open');}
 function setModalType(t){modalType=t;document.getElementById('tbtn-inst').classList.toggle('on',t==='installer');document.getElementById('tbtn-res').classList.toggle('on',t==='reseller');}
-async function geocodeAddr(){
-  const addr=document.getElementById('m-addr').value.trim();if(!addr)return;
-  const gs=document.getElementById('geo-status');gs.textContent='Haetaan…';gs.className='geo-status';
-  try{const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr+', Finland')}&limit=1`);const d=await r.json();
-    if(d[0]){document.getElementById('m-lat').value=parseFloat(d[0].lat).toFixed(5);document.getElementById('m-lng').value=parseFloat(d[0].lon).toFixed(5);gs.textContent='✓ '+d[0].display_name.split(',').slice(0,2).join(',');gs.className='geo-status ok';}
-    else{gs.textContent='Osoitetta ei löydy';gs.className='geo-status err';}}
-  catch(e){gs.textContent='Verkkovirhe';gs.className='geo-status err';}
-}
-async async async function saveDealer(){
-  const name=document.getElementById('m-name').value.trim();
-  const addr=document.getElementById('m-addr').value.trim();
+function saveDealer(){
+  var name=document.getElementById('m-name').value.trim();
+  var addr=document.getElementById('m-addr').value.trim();
   if(!name)return showToast('Nimi on pakollinen','err');
   if(!addr)return showToast('Osoite on pakollinen','err');
-  let lat=parseFloat(document.getElementById('m-lat').value);
-  let lng=parseFloat(document.getElementById('m-lng').value);
+  var lat=parseFloat(document.getElementById('m-lat').value);
+  var lng=parseFloat(document.getElementById('m-lng').value);
+  function commitSave(lat,lng){
+    var svcs=[].slice.call(document.getElementById('m-svcs').children).filter(function(b){return b.classList.contains('on');}).map(function(b){return b.textContent;});
+    var notes=document.getElementById('m-notes')?document.getElementById('m-notes').value.trim():'';
+    var dealer={id:editId||(Date.now()),name:name,address:addr,lat:lat,lng:lng,type:modalType,phone:document.getElementById('m-phone').value.trim(),services:svcs,notes:notes};
+    var edits=JSON.parse(sessionStorage.getItem('dealer_edits')||'[]');
+    if(editId){
+      var isHard=HARDCODED_DEALERS.some(function(d){return d.id===editId;});
+      if(isHard){
+        var ei=edits.findIndex(function(e){return e.action==='update'&&e.dealer.id===editId;});
+        if(ei>=0)edits[ei]={action:'update',dealer:dealer};
+        else edits.push({action:'update',dealer:dealer});
+      } else {
+        var ei2=edits.findIndex(function(e){return e.dealer&&e.dealer.id===editId;});
+        if(ei2>=0)edits[ei2]={action:edits[ei2].action,dealer:dealer};
+        else edits.push({action:'add',dealer:dealer});
+      }
+    } else {
+      edits.push({action:'add',dealer:dealer});
+    }
+    sessionStorage.setItem('dealer_edits',JSON.stringify(edits));
+    showToast(editId?'✓ Päivitetty':'✓ Lisätty','ok');
+    closeModal();loadDealers();
+  }
   if(isNaN(lat)||isNaN(lng)){
     showToast('Haetaan koordinaatteja…','inf');
-    try{const gr=await fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(addr+', Finland')+'&limit=1');
-      const gd=await gr.json();
-      if(gd[0]){lat=parseFloat(gd[0].lat);lng=parseFloat(gd[0].lon);
-        document.getElementById('m-lat').value=lat.toFixed(5);
-        document.getElementById('m-lng').value=lng.toFixed(5);}
-    }catch(e){}
-    if(isNaN(lat)||isNaN(lng)){lat=64.5;lng=26.0;}
-  }
-  const svcs=[...document.getElementById('m-svcs').children].filter(b=>b.classList.contains('on')).map(b=>b.textContent);
-  const notes=document.getElementById('m-notes')?document.getElementById('m-notes').value.trim():'';
-  const dealer={id:editId||(Date.now()),name,address:addr,lat,lng,type:modalType,phone:document.getElementById('m-phone').value.trim(),services:svcs,notes};
-  const edits=JSON.parse(sessionStorage.getItem('dealer_edits')||'[]');
-  if(editId){
-    const isHard=HARDCODED_DEALERS.some(d=>d.id===editId);
-    if(isHard){
-      // Hardcoded dealer: upsert as 'update'
-      const ei=edits.findIndex(e=>e.action==='update'&&e.dealer.id===editId);
-      if(ei>=0)edits[ei]={action:'update',dealer};
-      else edits.push({action:'update',dealer});
-    } else {
-      // Manually-added dealer: find its 'add' record and update it in-place
-      // This is the KEY fix — we keep action='add' so loadDealers keeps it
-      const ei=edits.findIndex(e=>e.dealer&&e.dealer.id===editId);
-      if(ei>=0)edits[ei]={action:edits[ei].action,dealer};
-      else edits.push({action:'add',dealer});
-    }
+    fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(addr+', Finland')+'&limit=1')
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d[0]){lat=parseFloat(d[0].lat);lng=parseFloat(d[0].lon);
+          document.getElementById('m-lat').value=lat.toFixed(5);
+          document.getElementById('m-lng').value=lng.toFixed(5);}
+        if(isNaN(lat)||isNaN(lng)){lat=64.5;lng=26.0;}
+        commitSave(lat,lng);
+      })
+      .catch(function(){commitSave(64.5,26.0);});
   } else {
-    edits.push({action:'add',dealer});
+    commitSave(lat,lng);
   }
-  sessionStorage.setItem('dealer_edits',JSON.stringify(edits));
-  showToast(editId?'✓ Päivitetty':'✓ Lisätty','ok');
-  closeModal();loadDealers();
 }
-async function deleteDealer(){
+function geocodeAddr(){
+  var addr=document.getElementById('m-addr').value.trim();
+  if(!addr)return;
+  var gs=document.getElementById('geo-status');
+  gs.textContent='Haetaan…';gs.className='geo-status';
+  fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(addr+', Finland')+'&limit=1')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d[0]){
+        document.getElementById('m-lat').value=parseFloat(d[0].lat).toFixed(5);
+        document.getElementById('m-lng').value=parseFloat(d[0].lon).toFixed(5);
+        gs.textContent='✓ Koordinaatit löydetty';gs.className='geo-status ok';
+      } else {
+        gs.textContent='Osoitetta ei löydy';gs.className='geo-status err';
+      }
+    })
+    .catch(function(){gs.textContent='Yhteysvirhe';gs.className='geo-status err';});
+}
+function deleteDealer(){
   if(!editId)return;
   if(!confirm('Poistetaanko tämä merkintä?'))return;
   const edits=JSON.parse(sessionStorage.getItem('dealer_edits')||'[]');
