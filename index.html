@@ -783,18 +783,43 @@ function loadDealers(manual){
   setSyncStatus('busy');
   if(manual)showToast('Ladataan…','inf');
   supaFetch('dealers?select=*&order=name')
-    .then(function(r){return r.json();})
+    .then(function(r){
+      console.log('Supabase HTTP status:',r.status);
+      return r.json();
+    })
     .then(function(data){
+      console.log('Supabase response:',data);
       if(!Array.isArray(data)){
+        // Error object returned
+        console.error('Supabase error:',data);
+        showToast('DB virhe: '+(data.message||data.hint||data.error||'tuntematon'),'err');
         dealers=HARDCODED_DEALERS.map(function(d){return Object.assign({},d);});
-        showToast('Offline-tila','inf');
       } else if(data.length===0){
+        // Empty DB — migrate hardcoded dealers automatically
+        console.log('DB tyhjä, siirretään',HARDCODED_DEALERS.length,'asentajaa...');
         dealers=HARDCODED_DEALERS.map(function(d){return Object.assign({},d);});
-        var payload=dealers.map(function(d){return {id:d.id,name:d.name,address:d.address,lat:d.lat,lng:d.lng,type:d.type,phone:d.phone||'',services:d.services||[],notes:d.notes||''};});
+        var payload=dealers.map(function(d){
+          return {id:d.id,name:d.name,address:d.address,lat:d.lat,lng:d.lng,
+                  type:d.type,phone:d.phone||'',services:d.services||[],notes:d.notes||''};
+        });
         supaFetch('dealers',{method:'POST',body:JSON.stringify(payload)})
-          .then(function(r){if(r.ok)showToast('✓ '+dealers.length+' asentajaa siirretty tietokantaan','ok');});
+          .then(function(r){
+            console.log('Migraatio status:',r.status);
+            return r.json();
+          })
+          .then(function(res){
+            console.log('Migraatio tulos:',res);
+            if(Array.isArray(res))showToast('✓ '+res.length+' asentajaa siirretty tietokantaan','ok');
+            else showToast('Migraatio virhe: '+(res.message||JSON.stringify(res)),'err');
+          });
       } else {
-        dealers=data.map(function(d){return Object.assign({},d,{services:Array.isArray(d.services)?d.services:(d.services?d.services.replace(/[{}"]/g,'').split(',').filter(Boolean):[])});});
+        console.log('Ladattu',data.length,'asentajaa Supabasesta');
+        dealers=data.map(function(d){
+          return Object.assign({},d,{
+            services:Array.isArray(d.services)?d.services:
+              (d.services?d.services.replace(/[{}"]/g,'').split(',').filter(Boolean):[])
+          });
+        });
       }
       Object.values(dMarkers).forEach(function(m){m.remove();});dMarkers={};
       dealers.forEach(addDealerMarker);
@@ -802,7 +827,8 @@ function loadDealers(manual){
       document.getElementById('loader').classList.add('gone');
       if(manual)showToast('✓ Ladattu','ok');
     })
-    .catch(function(){
+    .catch(function(e){
+      console.error('Supabase fetch epäonnistui:',e);
       dealers=HARDCODED_DEALERS.map(function(d){return Object.assign({},d);});
       Object.values(dMarkers).forEach(function(m){m.remove();});dMarkers={};
       dealers.forEach(addDealerMarker);
