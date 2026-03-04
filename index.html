@@ -470,6 +470,23 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="kpi-cell"><div class="kpi-val" id="m-sel">Kaikki</div><div class="kpi-lbl">Myyjä</div></div>
       </div>
       <div style="padding:10px 14px 4px;display:flex;flex-wrap:wrap;gap:5px;" id="myyja-pills"></div>
+      <div style="padding:4px 14px 8px;display:flex;gap:8px;align-items:center;flex-shrink:0;border-bottom:1px solid var(--border);">
+        <div class="fb-chip" style="flex-direction:row;align-items:center;gap:6px;">
+          <span class="fb-label" style="white-space:nowrap;">Vuosi</span>
+          <select class="fb-select" id="m-year" onchange="renderMyyjatMap()" style="min-width:68px;"><option value="">Kaikki</option></select>
+        </div>
+        <div class="fb-chip" style="flex-direction:row;align-items:center;gap:6px;">
+          <span class="fb-label" style="white-space:nowrap;">Kuukausi</span>
+          <select class="fb-select" id="m-month" onchange="renderMyyjatMap()">
+            <option value="">Kaikki</option>
+            <option value="1">Tammi</option><option value="2">Helmi</option><option value="3">Maalis</option>
+            <option value="4">Huhti</option><option value="5">Touko</option><option value="6">Kesä</option>
+            <option value="7">Heinä</option><option value="8">Elo</option><option value="9">Syys</option>
+            <option value="10">Loka</option><option value="11">Marras</option><option value="12">Joulu</option>
+          </select>
+        </div>
+        <button class="fb-clear" onclick="clearMyyjatFilters()" style="margin-left:auto;">✕</button>
+      </div>
       <div class="job-list" id="myyjat-list">
         <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;padding:32px 20px;text-align:center;">
           <div style="font-size:32px;">📂</div>
@@ -667,7 +684,7 @@ function processKohteet(file){
           toimitusaika:r[C.toimitusaika]||'',hinta:parseFloat(r[C.hinta])||0,
           asentajat:String(r[C.asentajat]||'').trim(),kansio:String(r[C.kansio]||'').trim(),
           menekki:String(r[C.menekki]||'').trim(),sopimus:r[C.sopimus]||'',
-          kalenteri:r[C.kalenteri]||'',nimi:String(r[C.nimi]||'').trim(),myyja:String(r[C.nimi]||'').trim(),
+          kalenteri:r[C.kalenteri]||'',nimi:String(r[C.nimi]||'').trim(),myyja:normalizeMyyja(String(r[C.nimi]||'').trim()),
           tila:String(r[C.tila]||'').trim(),kohdevalmis:r[C.kohdevalmis]||'',
           lat:coord?coord[0]:null,lng:coord?coord[1]:null,ok:!!coord,
         });
@@ -973,6 +990,24 @@ const MOPT={zoomControl:true,attributionControl:false};
 // ── MYYJÄT PAGE ───────────────────────────────────────────────
 var mapM=null, myyjaActive='all', myyjaMarkers=[];
 
+// Normalize seller name: Excel uses "Sukunimi Etunimi", app uses "Etunimi Sukunimi"
+function normalizeMyyja(raw){
+  if(!raw)return raw;
+  // Check if raw matches a key directly
+  if(SELLER_REGIONS[raw])return raw;
+  // Try reversing "Sukunimi Etunimi" -> "Etunimi Sukunimi"
+  var parts=raw.trim().split(' ');
+  if(parts.length>=2){
+    var reversed=parts.slice(1).join(' ')+' '+parts[0];
+    if(SELLER_REGIONS[reversed])return reversed;
+    // Also try just matching by last name
+    for(var k in SELLER_REGIONS){
+      if(k.split(' ').pop()===parts[0]||k.split(' ')[0]===parts[parts.length-1])return k;
+    }
+  }
+  return raw;
+}
+
 var SELLER_REGIONS={
   'Kalle Malmberg':  {color:'#e74c3c', regions:['Lappi','Pohjois-Pohjanmaa','Kainuu']},
   'Robert Muhola':   {color:'#a855f7', regions:['Keski-Pohjanmaa','Pohjois-Karjala','Pohjois-Savo','Keski-Suomi']},
@@ -1010,7 +1045,10 @@ function initMapM(){
     L.tileLayer(TILE,{maxZoom:19,subdomains:'abc'}).addTo(mapM);
     drawSellerRegions();
   }
-  setTimeout(function(){mapM.invalidateSize();},100);
+  // Multiple delayed invalidateSize calls to handle hidden-page render issue
+  [50,150,300,600,1000].forEach(function(t){
+    setTimeout(function(){if(mapM)mapM.invalidateSize();},t);
+  });
   if(kohteetData.length) renderMyyjatMap();
 }
 
@@ -1036,12 +1074,34 @@ function drawSellerRegions(){
   });
 }
 
+function populateMyyjaYears(){
+  var ysel=document.getElementById('m-year');if(!ysel)return;
+  var years=new Set();
+  kohteetData.forEach(function(r){if(r.sopimus){var d=new Date(r.sopimus);if(!isNaN(d))years.add(d.getFullYear());}});
+  var cur=ysel.value;
+  ysel.innerHTML='<option value="">Kaikki</option>'+[...years].sort().reverse().map(function(y){return '<option value="'+y+'"'+(y==cur?' selected':'')+'>'+y+'</option>';}).join('');
+}
+function clearMyyjatFilters(){
+  var y=document.getElementById('m-year'),m=document.getElementById('m-month');
+  if(y)y.value='';if(m)m.value='';renderMyyjatMap();
+}
 function renderMyyjatMap(){
   myyjaMarkers.forEach(function(m){mapM.removeLayer(m);});
   myyjaMarkers=[];
   if(!kohteetData.length)return;
-
-  var filtered=myyjaActive==='all'?kohteetData:kohteetData.filter(function(r){return r.myyja===myyjaActive;});
+  populateMyyjaYears();
+  var yearF=document.getElementById('m-year')?document.getElementById('m-year').value:'';
+  var monthF=document.getElementById('m-month')?document.getElementById('m-month').value:'';
+  var filtered=kohteetData.filter(function(r){
+    if(myyjaActive!=='all'&&r.myyja!==myyjaActive)return false;
+    if(yearF||monthF){
+      var d=r.sopimus?new Date(r.sopimus):null;
+      if(!d||isNaN(d))return false;
+      if(yearF&&d.getFullYear()!=yearF)return false;
+      if(monthF&&(d.getMonth()+1)!=monthF)return false;
+    }
+    return true;
+  });
   var totalRev=0, cnt=0;
 
   filtered.forEach(function(r){
@@ -1071,24 +1131,38 @@ function renderMyyjatMap(){
 function renderMyyjatList(rows){
   var el=document.getElementById('myyjat-list');
   if(!rows.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--muted)">Ei kohtia</div>';return;}
-  var sellers={};
-  rows.forEach(function(r){
-    var s=r.myyja||'Tuntematon';
-    if(!sellers[s])sellers[s]={name:s,cnt:0,rev:0};
-    sellers[s].cnt++;
-    sellers[s].rev+=(parseFloat(String(r.hinta||'').replace(/[^\d.]/g,''))||0);
-  });
-  var list=Object.values(sellers).sort(function(a,b){return b.rev-a.rev;});
-  el.innerHTML=list.map(function(s){
-    var cfg=SELLER_REGIONS[s.name];
-    var color=cfg?cfg.color:'#888';
-    return '<div class="dealer-card" onclick="filterMyyjat(\''+s.name+'\')" style="cursor:pointer;">'
-      +'<div class="card-top"><div class="card-name" style="color:'+color+'">● '+s.name+'</div>'
-      +'<span class="badge inst">'+s.cnt+' kpl</span></div>'
-      +'<div class="card-addr">'+s.rev.toLocaleString('fi-FI')+'€ liikevaihto</div></div>';
-  }).join('');
+  if(myyjaActive==='all'){
+    var sellers={};
+    rows.forEach(function(r){
+      var s=r.myyja||'Tuntematon';
+      if(!sellers[s])sellers[s]={name:s,cnt:0,rev:0};
+      sellers[s].cnt++;
+      sellers[s].rev+=(parseFloat(String(r.hinta||'').replace(/[^\d.]/g,''))||0);
+    });
+    var list=Object.values(sellers).sort(function(a,b){return b.rev-a.rev;});
+    el.innerHTML=list.map(function(s){
+      var cfg=SELLER_REGIONS[s.name];
+      var color=cfg?cfg.color:'#aaa';
+      return '<div class="dealer-card" onclick="filterMyyjat(\''+s.name+'\')" style="cursor:pointer;">'
+        +'<div class="card-top"><div class="card-name" style="color:'+color+'">● '+s.name+'</div>'
+        +'<span class="badge inst" style="color:var(--accent);border-color:rgba(243,112,46,0.4)">'+s.cnt+' KPL</span></div>'
+        +'<div class="card-addr">'+s.rev.toLocaleString("fi-FI",{minimumFractionDigits:2})+'€ liikevaihto</div></div>';
+    }).join('');
+  } else {
+    var sorted=rows.slice().sort(function(a,b){return new Date(b.sopimus||0)-new Date(a.sopimus||0);});
+    el.innerHTML=sorted.map(function(r){
+      var rev=parseFloat(String(r.hinta||'').replace(/[^\d.]/g,''))||0;
+      var dateStr=r.sopimus?new Date(r.sopimus).toLocaleDateString('fi-FI'):'–';
+      var tilaClass=r.tila==='Työmaa valmis'?'inst':'res';
+      return '<div class="dealer-card">'
+        +'<div class="card-top"><div class="card-name">'+r.nimi+'</div>'
+        +(r.tila?'<span class="badge '+tilaClass+'">'+r.tila+'</span>':'')+'</div>'
+        +'<div class="card-addr">'+r.kaupunki+(r.osoite?' · '+r.osoite:'')+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:3px;">'+dateStr+(rev?' · '+rev.toLocaleString("fi-FI",{minimumFractionDigits:2})+'€':'')+'</div>'
+        +'</div>';
+    }).join('');
+  }
 }
-
 function filterMyyjat(seller){
   myyjaActive=seller;
   drawSellerRegions();
