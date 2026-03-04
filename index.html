@@ -1030,26 +1030,85 @@ var SELLER_REGIONS={
 };
 
 // Finland maakunta polygons (simplified WGS84 [lat,lng] pairs)
-var MAAKUNTA_POLYGONS={
-  'Lappi':[[70.08,27.9],[70.08,25.55],[69.76,21.0],[69.07,20.56],[68.7,20.65],[68.42,22.6],[67.92,23.5],[67.5,24.8],[67.13,26.4],[67.08,28.1],[67.4,29.4],[68.1,29.55],[68.55,28.9],[69.0,27.95],[69.5,27.5],[70.08,27.9]],
-  'Pohjois-Pohjanmaa':[[65.75,25.3],[65.9,24.4],[65.7,23.1],[65.3,22.8],[65.0,23.1],[64.6,23.2],[64.1,23.0],[63.8,24.3],[63.6,25.4],[63.8,26.8],[64.3,27.8],[65.0,28.5],[65.6,28.2],[66.2,27.4],[66.4,25.8],[66.0,24.8],[65.75,25.3]],
-  'Kainuu':[[65.0,28.5],[65.6,28.2],[66.2,27.4],[66.4,25.8],[66.0,24.8],[65.75,25.3],[65.9,24.4],[65.0,26.0],[64.3,27.8],[65.0,28.5]],
-  'Keski-Pohjanmaa':[[64.1,23.0],[64.6,23.2],[65.0,23.1],[65.3,22.8],[64.9,22.5],[64.3,22.4],[63.9,22.5],[63.8,23.2],[63.8,24.3],[64.1,23.0]],
-  'Pohjanmaa':[[63.8,23.2],[63.9,22.5],[63.3,22.0],[63.0,21.5],[62.7,21.3],[62.4,21.4],[62.2,21.9],[62.5,22.8],[63.0,23.4],[63.4,23.5],[63.8,23.2]],
-  'Etelä-Pohjanmaa':[[63.8,24.3],[63.8,23.2],[63.4,23.5],[63.0,23.4],[62.5,22.8],[62.2,21.9],[62.0,22.5],[62.2,23.8],[62.6,24.6],[63.0,24.8],[63.4,25.0],[63.6,25.4],[63.8,24.3]],
-  'Satakunta':[[62.2,21.9],[61.8,21.6],[61.4,21.4],[61.1,21.8],[61.1,22.8],[61.4,23.3],[61.8,23.5],[62.2,23.2],[62.5,22.8],[62.2,21.9]],
-  'Pirkanmaa':[[62.6,24.6],[62.2,23.8],[62.0,22.5],[61.8,23.5],[61.4,23.3],[61.3,24.0],[61.5,24.8],[61.8,25.2],[62.2,25.2],[62.6,25.0],[63.0,24.8],[62.6,24.6]],
-  'Keski-Suomi':[[63.6,25.4],[63.4,25.0],[63.0,24.8],[62.6,25.0],[62.2,25.2],[62.4,26.2],[62.6,27.1],[63.0,27.4],[63.4,27.0],[63.7,26.8],[63.7,25.8],[63.6,25.4]],
-  'Pohjois-Savo':[[63.7,26.8],[63.4,27.0],[63.0,27.4],[62.6,27.1],[62.6,28.2],[63.0,29.0],[63.5,29.2],[64.0,28.6],[64.3,27.8],[63.8,26.8],[63.7,26.8]],
-  'Pohjois-Karjala':[[64.3,27.8],[64.0,28.6],[63.5,29.2],[63.0,29.0],[62.6,28.2],[62.6,29.5],[62.8,30.5],[63.2,31.0],[63.8,30.0],[64.5,29.5],[64.3,27.8]],
-  'Etelä-Savo':[[62.6,27.1],[62.4,26.2],[62.2,25.2],[61.8,25.2],[61.6,26.0],[61.6,27.2],[62.0,28.0],[62.4,28.0],[62.6,27.5],[62.6,27.1]],
-  'Etelä-Karjala':[[62.0,28.0],[61.6,27.2],[61.2,27.5],[61.0,28.5],[61.2,29.5],[61.6,29.5],[62.0,29.0],[62.4,28.0],[62.0,28.0]],
-  'Kymenlaakso':[[61.2,27.5],[61.6,27.2],[61.6,26.0],[61.2,25.8],[60.8,26.0],[60.5,26.8],[60.5,27.5],[61.0,28.5],[61.2,27.5]],
-  'Päijät-Häme':[[61.8,25.2],[61.6,25.0],[61.2,25.0],[60.8,25.2],[60.8,26.0],[61.2,25.8],[61.6,26.0],[61.8,25.2]],
-  'Kanta-Häme':[[61.3,24.0],[61.1,22.8],[60.8,23.2],[60.5,24.0],[60.6,25.0],[61.0,24.8],[61.2,25.0],[61.6,25.0],[61.8,25.2],[61.5,24.8],[61.3,24.0]],
-  'Varsinais-Suomi':[[61.1,21.8],[61.4,21.4],[61.1,21.0],[60.6,21.0],[60.1,21.4],[59.8,22.5],[60.0,23.2],[60.4,23.5],[60.8,23.2],[61.1,22.8],[61.1,21.8]],
-  'Uusimaa':[[60.8,23.2],[60.4,23.5],[60.0,23.2],[59.8,22.5],[59.8,24.0],[59.9,25.6],[60.1,26.6],[60.5,27.5],[60.5,26.8],[60.8,26.0],[61.2,25.8],[60.8,25.2],[60.6,25.0],[60.5,24.0],[60.8,23.2]]
+// Official Finland maakunta GeoJSON loaded at runtime from Statistics Finland
+var maaRegionLayers=[];
+function drawSellerRegions(){
+  maaRegionLayers.forEach(function(l){mapM.removeLayer(l);});
+  maaRegionLayers=[];
+
+  // Statistics Finland open WFS - CORS enabled, no API key needed
+  var url='https://geo.stat.fi/geoserver/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=maakunta1000k_2023&outputFormat=application/json&srsName=EPSG:4326';
+  
+  fetch(url)
+    .then(function(r){return r.json();})
+    .then(function(geoJson){
+      renderRegions(geoJson);
+    })
+    .catch(function(e){
+      console.warn('GeoJSON fetch failed, using fallback:', e);
+      renderRegionsFallback();
+    });
+}
+
+// Region name -> seller mapping
+var REGION_TO_SELLER={
+  'Lappi':'Kalle Malmberg',
+  'Pohjois-Pohjanmaa':'Kalle Malmberg',
+  'Kainuu':'Kalle Malmberg',
+  'Keski-Pohjanmaa':'Robert Muhola',
+  'Pohjois-Karjala':'Robert Muhola',
+  'Pohjois-Savo':'Robert Muhola',
+  'Keski-Suomi':'Robert Muhola',
+  'Etelä-Pohjanmaa':'Timo Lappalainen',
+  'Satakunta':'Timo Lappalainen',
+  'Pirkanmaa':'Timo Lappalainen',
+  'Pohjanmaa':'Kaj Östman',
+  'Päijät-Häme':'Ilkka Toivonen',
+  'Kanta-Häme':'Ilkka Toivonen',
+  'Varsinais-Suomi':'Ilkka Toivonen',
+  'Etelä-Savo':'Jaakko Toivonen',
+  'Etelä-Karjala':'Jaakko Toivonen',
+  'Kymenlaakso':'Jaakko Toivonen',
+  'Uusimaa':'Jaakko Toivonen'
 };
+
+function renderRegions(geoJson){
+  if(!geoJson||!geoJson.features)return;
+  geoJson.features.forEach(function(feature){
+    // Property name varies - try common ones
+    var name=feature.properties.nimi||feature.properties.name||feature.properties.NAMEFIN||feature.properties.maakunta_n||'';
+    var seller=REGION_TO_SELLER[name];
+    var cfg=seller?SELLER_REGIONS[seller]:null;
+    if(!cfg)return; // skip unassigned regions
+    var isActive=(myyjaActive==='all'||myyjaActive===seller);
+    var layer=L.geoJSON(feature,{
+      style:{
+        color:cfg.color, weight:2,
+        opacity:isActive?0.9:0.3,
+        fillColor:cfg.color,
+        fillOpacity:isActive?0.25:0.07
+      }
+    }).addTo(mapM);
+    layer.bindTooltip('<b>'+name+'</b><br><span style="color:'+cfg.color+'">● '+seller+'</span>',{sticky:true,className:'myyja-tooltip'});
+    layer.on('click',function(){filterMyyjat(myyjaActive===seller?'all':seller);});
+    maaRegionLayers.push(layer);
+  });
+}
+
+function renderRegionsFallback(){
+  // Simple fallback - just show seller name labels on map center points
+  var centers={
+    'Kalle Malmberg':[66.5,26.5],'Robert Muhola':[63.5,27.5],
+    'Timo Lappalainen':[62.5,23.0],'Kaj Östman':[63.0,22.0],
+    'Ilkka Toivonen':[61.0,24.5],'Jaakko Toivonen':[61.2,27.5]
+  };
+  Object.keys(centers).forEach(function(seller){
+    var cfg=SELLER_REGIONS[seller];
+    var pos=centers[seller];
+    var icon=L.divIcon({html:'<div style="color:'+cfg.color+';font-weight:700;font-size:13px;white-space:nowrap;text-shadow:0 1px 3px #000">'+seller.split(' ')[0]+'</div>',className:''});
+    maaRegionLayers.push(L.marker(pos,{icon:icon,interactive:false}).addTo(mapM));
+  });
+}
 
 function initMapM(){
   // mapM is already initialized in initMaps() — just resize and render
@@ -1057,28 +1116,6 @@ function initMapM(){
     [50,200,500].forEach(function(t){setTimeout(function(){mapM.invalidateSize();},t);});
     if(kohteetData.length){populateMyyjaYears();renderMyyjatMap();}
   }
-}
-
-var regionLayers=[];
-function drawSellerRegions(){
-  regionLayers.forEach(function(l){mapM.removeLayer(l);});
-  regionLayers=[];
-  Object.keys(SELLER_REGIONS).forEach(function(seller){
-    var cfg=SELLER_REGIONS[seller];
-    var isActive=(myyjaActive==='all'||myyjaActive===seller);
-    var opacity=isActive?0.25:0.07;
-    cfg.regions.forEach(function(region){
-      var coords=MAAKUNTA_POLYGONS[region];
-      if(!coords)return;
-      var poly=L.polygon(coords,{
-        color:cfg.color, weight:2, opacity:isActive?0.9:0.3,
-        fillColor:cfg.color, fillOpacity:opacity
-      }).addTo(mapM);
-      poly.bindTooltip('<b>'+region+'</b><br><span style="color:'+cfg.color+'">● '+seller+'</span>',{sticky:true,className:'myyja-tooltip'});
-      poly.on('click',function(){filterMyyjat(myyjaActive===seller?'all':seller);});
-      regionLayers.push(poly);
-    });
-  });
 }
 
 function populateMyyjaYears(){
