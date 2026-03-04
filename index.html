@@ -1040,16 +1040,11 @@ var MAAKUNTA_POLYGONS={
 };
 
 function initMapM(){
-  if(!mapM){
-    mapM=L.map('map-myyjat',{zoomControl:true,attributionControl:false}).setView([64.5,26.0],5);
-    L.tileLayer(TILE,{maxZoom:19,subdomains:'abc'}).addTo(mapM);
-    drawSellerRegions();
+  // mapM is already initialized in initMaps() — just resize and render
+  if(mapM){
+    [50,200,500].forEach(function(t){setTimeout(function(){mapM.invalidateSize();},t);});
+    if(kohteetData.length){populateMyyjaYears();renderMyyjatMap();}
   }
-  // Multiple delayed invalidateSize calls to handle hidden-page render issue
-  [50,150,300,600,1000].forEach(function(t){
-    setTimeout(function(){if(mapM)mapM.invalidateSize();},t);
-  });
-  if(kohteetData.length) renderMyyjatMap();
 }
 
 var regionLayers=[];
@@ -1077,7 +1072,7 @@ function drawSellerRegions(){
 function populateMyyjaYears(){
   var ysel=document.getElementById('m-year');if(!ysel)return;
   var years=new Set();
-  kohteetData.forEach(function(r){if(r.sopimus){var d=new Date(r.sopimus);if(!isNaN(d))years.add(d.getFullYear());}});
+  kohteetData.forEach(function(r){if(r.sopimus){var d=parseDate(r.sopimus);if(d)years.add(d.getFullYear());}});
   var cur=ysel.value;
   ysel.innerHTML='<option value="">Kaikki</option>'+[...years].sort().reverse().map(function(y){return '<option value="'+y+'"'+(y==cur?' selected':'')+'>'+y+'</option>';}).join('');
 }
@@ -1095,8 +1090,8 @@ function renderMyyjatMap(){
   var filtered=kohteetData.filter(function(r){
     if(myyjaActive!=='all'&&r.myyja!==myyjaActive)return false;
     if(yearF||monthF){
-      var d=r.sopimus?new Date(r.sopimus):null;
-      if(!d||isNaN(d))return false;
+      var d=r.sopimus?parseDate(r.sopimus):null;
+      if(!d)return false;
       if(yearF&&d.getFullYear()!=yearF)return false;
       if(monthF&&(d.getMonth()+1)!=monthF)return false;
     }
@@ -1111,10 +1106,10 @@ function renderMyyjatMap(){
     var color=cfg?cfg.color:'#888';
     var svg='<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="'+color+'" opacity="0.85" stroke="white" stroke-width="1.5"/></svg>';
     var icon=L.divIcon({html:svg,iconSize:[14,14],iconAnchor:[7,7],className:''});
-    var rev=parseFloat(String(r.hinta||'').replace(/[^\d.]/g,''))||0;
+    var rev=parseFloat(r.hinta)||0;
     totalRev+=rev;cnt++;
-    var popup='<div class="popup-body"><div class="popup-name">'+r.nimi+'</div>'
-      +'<div class="popup-addr">'+r.osoite+', '+r.kaupunki+'</div>'
+    var popup='<div class="popup-body"><div class="popup-name">'+r.displayName+'</div>'
+      +'<div class="popup-addr">'+r.lahiosoite+', '+r.city+'</div>'
       +'<div style="margin-top:6px;font-size:11px;color:'+color+'">● '+seller+'</div>'
       +(rev?'<div style="font-size:11px;margin-top:2px;color:var(--muted)">'+rev.toLocaleString('fi-FI')+'€</div>':'')
       +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+r.tila+'</div></div>';
@@ -1123,7 +1118,7 @@ function renderMyyjatMap(){
   });
 
   document.getElementById('m-cnt').textContent=cnt;
-  document.getElementById('m-rev').textContent=totalRev>=1000?(totalRev/1000).toFixed(0)+'k€':totalRev+'€';
+  document.getElementById('m-rev').textContent=fmtMoney(totalRev);
   document.getElementById('m-sel').textContent=myyjaActive==='all'?'Kaikki':myyjaActive.split(' ')[0];
   renderMyyjatList(filtered.filter(function(r){return r.lat&&r.lng;}));
 }
@@ -1137,7 +1132,7 @@ function renderMyyjatList(rows){
       var s=r.myyja||'Tuntematon';
       if(!sellers[s])sellers[s]={name:s,cnt:0,rev:0};
       sellers[s].cnt++;
-      sellers[s].rev+=(parseFloat(String(r.hinta||'').replace(/[^\d.]/g,''))||0);
+      sellers[s].rev+=(parseFloat(r.hinta)||0);
     });
     var list=Object.values(sellers).sort(function(a,b){return b.rev-a.rev;});
     el.innerHTML=list.map(function(s){
@@ -1146,19 +1141,19 @@ function renderMyyjatList(rows){
       return '<div class="dealer-card" onclick="filterMyyjat(\''+s.name+'\')" style="cursor:pointer;">'
         +'<div class="card-top"><div class="card-name" style="color:'+color+'">● '+s.name+'</div>'
         +'<span class="badge inst" style="color:var(--accent);border-color:rgba(243,112,46,0.4)">'+s.cnt+' KPL</span></div>'
-        +'<div class="card-addr">'+s.rev.toLocaleString("fi-FI",{minimumFractionDigits:2})+'€ liikevaihto</div></div>';
+        +'<div class="card-addr">'+fmtMoney(s.rev)+' liikevaihto</div></div>';
     }).join('');
   } else {
     var sorted=rows.slice().sort(function(a,b){return new Date(b.sopimus||0)-new Date(a.sopimus||0);});
     el.innerHTML=sorted.map(function(r){
-      var rev=parseFloat(String(r.hinta||'').replace(/[^\d.]/g,''))||0;
-      var dateStr=r.sopimus?new Date(r.sopimus).toLocaleDateString('fi-FI'):'–';
+      var rev=parseFloat(r.hinta)||0;
+      var dateStr=r.sopimus?fmtDate(r.sopimus):'–';
       var tilaClass=r.tila==='Työmaa valmis'?'inst':'res';
       return '<div class="dealer-card">'
-        +'<div class="card-top"><div class="card-name">'+r.nimi+'</div>'
+        +'<div class="card-top"><div class="card-name">'+r.displayName+'</div>'
         +(r.tila?'<span class="badge '+tilaClass+'">'+r.tila+'</span>':'')+'</div>'
-        +'<div class="card-addr">'+r.kaupunki+(r.osoite?' · '+r.osoite:'')+'</div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:3px;">'+dateStr+(rev?' · '+rev.toLocaleString("fi-FI",{minimumFractionDigits:2})+'€':'')+'</div>'
+        +'<div class="card-addr">'+r.city+(r.lahiosoite?' · '+r.lahiosoite:'')+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:3px;">'+dateStr+(rev?' · '+fmtMoney(rev):'')+'</div>'
         +'</div>';
     }).join('');
   }
@@ -1191,11 +1186,14 @@ function initMaps(){
   if(typeof L==='undefined'){setTimeout(initMaps,200);return;}
   const dEl=document.getElementById('map-dealers');
   const kEl=document.getElementById('map-kohteet');
-  if(!dEl||!kEl){setTimeout(initMaps,100);return;}
+  const mEl=document.getElementById('map-myyjat');
+  if(!dEl||!kEl||!mEl){setTimeout(initMaps,100);return;}
   mapD=L.map(dEl,MOPT).setView([64.5,26.0],5);
   mapK=L.map(kEl,MOPT).setView([64.5,26.0],5);
-  [mapD,mapK].forEach(m=>L.tileLayer(TILE,{maxZoom:19,subdomains:'abc'}).addTo(m));
-  setTimeout(()=>{mapD.invalidateSize();mapK.invalidateSize();},150);
+  mapM=L.map(mEl,MOPT).setView([64.5,26.0],5);
+  [mapD,mapK,mapM].forEach(m=>L.tileLayer(TILE,{maxZoom:19,subdomains:'abc'}).addTo(m));
+  drawSellerRegions();
+  setTimeout(()=>{mapD.invalidateSize();mapK.invalidateSize();mapM.invalidateSize();},150);
   loadDealers();
 }
 </script>
