@@ -72,8 +72,8 @@ button,input,select,textarea{font-family:inherit;}
 
 /* ── APP BODY ─────────────────────────────────────────────── */
 .app-body{flex:1;overflow:hidden;display:flex;flex-direction:column;}
-.page{display:none;flex:1;overflow:hidden;}
-.page.active{display:flex;flex-direction:row;flex:1;}
+.page{display:flex;flex:1;overflow:hidden;visibility:hidden;position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;}
+.page.active{visibility:visible;position:relative;pointer-events:auto;}
 #page-dealers.active{flex-direction:row;}
 #page-kohteet.active{flex-direction:row;}
 #page-myyjat.active{flex-direction:row;}
@@ -306,7 +306,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <button class="nav-tab" onclick="showPage('myyjat',this)">👤 Myyjät</button>
   </nav>
   <div class="header-right" style="display:flex;align-items:center;gap:10px;">
-    <div id="nav-upload-area" style="display:none;align-items:center;gap:8px;">
+    <div id="nav-upload-area" style="display:flex;align-items:center;gap:8px;">
       <button class="upload-btn" onclick="document.getElementById('kohteet-file').click()">📂 Lataa Excel</button>
       <span class="upload-status-bar" id="kohteet-status"></span>
     </div>
@@ -622,9 +622,9 @@ function showPage(name,btn){
   if(btn)btn.classList.add('active');
   const tb=document.getElementById('tb-'+name);if(tb)tb.classList.add('active');
   document.getElementById('kohteet-filters').style.display=name==='kohteet'?'flex':'none';
-  document.getElementById('nav-upload-area').style.display=name==='kohteet'?'flex':'none';
+  document.getElementById('nav-upload-area').style.display=(name==='kohteet'||name==='myyjat'||name==='dealers')?'flex':'none';
   if(name==='edit')renderDealerTable();
-  if(name==='myyjat'){buildMyyjaP();initMapM();}
+  if(name==='myyjat'){buildMyyjaP();if(mapM){[50,200,400].forEach(function(t){setTimeout(function(){mapM.invalidateSize();},t);});if(kohteetData.length){populateMyyjaYears();renderMyyjatMap();}}}
   setTimeout(()=>{
     if(name==='dealers'&&mapD)mapD.invalidateSize();
     if(name==='kohteet'&&mapK)mapK.invalidateSize();
