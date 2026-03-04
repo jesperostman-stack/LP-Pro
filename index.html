@@ -90,9 +90,9 @@ button,input,select,textarea{font-family:inherit;}
 /* ── SIDEBAR ─────────────────────────────────────────────── */
 .sidebar{width:300px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
 .kpi-bar{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
-.kpi-cell{flex:1;padding:10px 12px;border-right:1px solid var(--border);}
+.kpi-cell{flex:1;min-width:0;padding:10px 8px;border-right:1px solid var(--border);overflow:hidden;}
 .kpi-cell:last-child{border-right:none;}
-.kpi-val{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:var(--orange);}
+.kpi-val{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(13px,2vw,18px);color:var(--orange);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .kpi-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:1px;}
 
 /* ── JOB LIST ────────────────────────────────────────────── */
@@ -301,12 +301,15 @@ document.addEventListener('DOMContentLoaded',function(){
   <nav class="nav-tabs">
     <button class="nav-tab active" onclick="showPage('dealers',this)">🗺 Asentajat</button>
     <button class="nav-tab" onclick="showPage('kohteet',this)">📍 Kohteet</button>
-  <button class="upload-btn" id="nav-upload-btn" onclick="document.getElementById('kohteet-file').click()" style="display:none;margin-left:2px;">📂 Lataa Excel</button>
-  <span class="upload-status-bar" id="kohteet-status" style="display:none;"></span>
+
     <button class="nav-tab" onclick="showPage('edit',this)">✏️ Muokkaa</button>
   <button class="nav-tab" onclick="showPage('myyjat',this)">👤 Myyjät</button>
   </nav>
-  <div class="header-right">
+  <div class="header-right" style="display:flex;align-items:center;gap:10px;">
+    <div id="nav-upload-area" style="display:none;align-items:center;gap:8px;">
+      <button class="upload-btn" onclick="document.getElementById('kohteet-file').click()">📂 Lataa Excel</button>
+      <span class="upload-status-bar" id="kohteet-status"></span>
+    </div>
     <div style="display:flex;align-items:center;gap:5px;">
       <div class="dot" id="sync-dot"></div>
       <span class="sync-label" id="sync-label">Yhdistetty</span>
@@ -602,8 +605,7 @@ function showPage(name,btn){
   if(btn)btn.classList.add('active');
   const tb=document.getElementById('tb-'+name);if(tb)tb.classList.add('active');
   document.getElementById('kohteet-filters').style.display=name==='kohteet'?'flex':'none';
-  document.getElementById('nav-upload-btn').style.display=name==='kohteet'?'inline-flex':'none';
-  document.getElementById('kohteet-status').style.display=name==='kohteet'?'inline-flex':'none';
+  document.getElementById('nav-upload-area').style.display=name==='kohteet'?'flex':'none';
   if(name==='edit')renderDealerTable();
   if(name==='myyjat'){buildMyyjaP();initMapM();}
   setTimeout(()=>{
@@ -1005,7 +1007,7 @@ var MAAKUNTA_POLYGONS={
 function initMapM(){
   if(!mapM){
     mapM=L.map('map-myyjat',{zoomControl:true,attributionControl:false}).setView([64.5,26.0],5);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(mapM);
+    L.tileLayer(TILE,{maxZoom:19,subdomains:'abc'}).addTo(mapM);
     drawSellerRegions();
   }
   setTimeout(function(){mapM.invalidateSize();},100);
