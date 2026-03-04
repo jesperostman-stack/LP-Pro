@@ -624,7 +624,19 @@ function showPage(name,btn){
   document.getElementById('kohteet-filters').style.display=name==='kohteet'?'flex':'none';
   document.getElementById('nav-upload-area').style.display=(name==='kohteet'||name==='myyjat'||name==='dealers')?'flex':'none';
   if(name==='edit')renderDealerTable();
-  if(name==='myyjat'){buildMyyjaP();if(mapM){[50,200,400].forEach(function(t){setTimeout(function(){mapM.invalidateSize();},t);});if(kohteetData.length){populateMyyjaYears();renderMyyjatMap();}}}
+  if(name==='myyjat'){
+    buildMyyjaP();
+    if(!mapM){
+      var mEl=document.getElementById('map-myyjat');
+      mapM=L.map(mEl,MOPT).setView([64.5,26.0],5);
+      L.tileLayer(TILE,{maxZoom:19,subdomains:'abc'}).addTo(mapM);
+      drawSellerRegions();
+    }
+    setTimeout(function(){
+      mapM.invalidateSize();
+      if(kohteetData.length){populateMyyjaYears();renderMyyjatMap();}
+    },100);
+  }
   setTimeout(()=>{
     if(name==='dealers'&&mapD)mapD.invalidateSize();
     if(name==='kohteet'&&mapK)mapK.invalidateSize();
@@ -1186,25 +1198,13 @@ function initMaps(){
   if(typeof L==='undefined'){setTimeout(initMaps,200);return;}
   const dEl=document.getElementById('map-dealers');
   const kEl=document.getElementById('map-kohteet');
-  const mEl=document.getElementById('map-myyjat');
-  if(!dEl||!kEl||!mEl){setTimeout(initMaps,100);return;}
-  // Init myyjat FIRST while its page is briefly active
-  var myPage=document.getElementById('page-myyjat');
-  var dealersPage=document.getElementById('page-dealers');
-  dealersPage.classList.remove('active');
-  myPage.classList.add('active');
-  mapM=L.map(mEl,MOPT).setView([64.5,26.0],5);
-  L.tileLayer(TILE,{maxZoom:19,subdomains:'abc'}).addTo(mapM);
-  drawSellerRegions();
-  // Now switch to dealers page (the real default)
-  myPage.classList.remove('active');
-  dealersPage.classList.add('active');
-  // Init dealers + kohteet (now dealers is visible)
+  if(!dEl||!kEl){setTimeout(initMaps,100);return;}
   mapD=L.map(dEl,MOPT).setView([64.5,26.0],5);
   mapK=L.map(kEl,MOPT).setView([64.5,26.0],5);
   [mapD,mapK].forEach(function(m){L.tileLayer(TILE,{maxZoom:19,subdomains:'abc'}).addTo(m);});
   setTimeout(function(){mapD.invalidateSize();mapK.invalidateSize();},150);
   loadDealers();
+  // mapM is initialized lazily on first click of Myyjat tab
 }
 </script>
 
