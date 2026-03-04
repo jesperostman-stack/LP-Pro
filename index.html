@@ -75,6 +75,8 @@ button,input,select,textarea{font-family:inherit;}
 .page{display:none;flex:1;overflow:hidden;}
 .page.active{display:flex;flex-direction:row;flex:1;}
 #page-dealers.active{flex-direction:row;}
+#page-kohteet.active{flex-direction:row;}
+#page-myyjat.active{flex-direction:row;}
 #page-edit.active{flex-direction:column;}
 
 /* ── MAP ─────────────────────────────────────────────────── */
@@ -168,7 +170,7 @@ button,input,select,textarea{font-family:inherit;}
 /* ── EDIT PAGE ───────────────────────────────────────────── */
 #page-edit{background:var(--bg);}
 .edit-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-.edit-title{font-family:'Syne',sans-serif;font-weight:800;font-size:14px;}
+.edit-title{font-family:'DM Sans',sans-serif;font-weight:600;font-size:15px;letter-spacing:-0.01em;color:var(--text);}
 .edit-table-wrap{flex:1;overflow:auto;padding:16px 18px;}
 table{width:100%;border-collapse:collapse;font-size:12px;min-width:600px;}
 thead th{font-family:'Syne',sans-serif;font-size:9px;letter-spacing:1.2px;font-weight:700;color:var(--muted);text-transform:uppercase;text-align:left;padding:0 10px 10px;border-bottom:1px solid var(--border);}
@@ -258,6 +260,12 @@ tbody td{padding:10px;vertical-align:middle;}
 .login-err{font-size:12px;color:#f87171;min-height:16px;text-align:center;}
 .login-btn{background:#f3702e;color:#fff;border:none;border-radius:10px;padding:15px;font-size:15px;font-weight:700;width:100%;cursor:pointer;font-family:'Syne',sans-serif;transition:background .15s;}
 .login-btn:hover{background:#e55e1a;}
+
+.mpill{background:transparent;border:1.5px solid;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;opacity:0.5;}
+.mpill.on{opacity:1;filter:brightness(1.2);}
+.mpill:hover{opacity:0.85;}
+.myyja-tooltip{background:var(--surface,#1a1a1a)!important;color:#fff!important;border:1px solid rgba(255,255,255,0.15)!important;border-radius:6px!important;font-size:12px!important;padding:6px 10px!important;box-shadow:0 4px 12px rgba(0,0,0,0.4)!important;}
+.myyja-tooltip::before{display:none!important;}
 </style>
 <script>
 function doLogin(){
@@ -293,7 +301,10 @@ document.addEventListener('DOMContentLoaded',function(){
   <nav class="nav-tabs">
     <button class="nav-tab active" onclick="showPage('dealers',this)">🗺 Asentajat</button>
     <button class="nav-tab" onclick="showPage('kohteet',this)">📍 Kohteet</button>
+  <button class="upload-btn" id="nav-upload-btn" onclick="document.getElementById('kohteet-file').click()" style="display:none;margin-left:2px;">📂 Lataa Excel</button>
+  <span class="upload-status-bar" id="kohteet-status" style="display:none;"></span>
     <button class="nav-tab" onclick="showPage('edit',this)">✏️ Muokkaa</button>
+  <button class="nav-tab" onclick="showPage('myyjat',this)">👤 Myyjät</button>
   </nav>
   <div class="header-right">
     <div style="display:flex;align-items:center;gap:5px;">
@@ -358,9 +369,7 @@ document.addEventListener('DOMContentLoaded',function(){
   </div>
   <div class="fb-divider"></div>
   <button class="fb-clear" onclick="clearKohteet()">✕ Tyhjennä</button>
-  <button class="upload-btn" onclick="document.getElementById('kohteet-file').click()">📂 Lataa Excel</button>
   <input type="file" id="kohteet-file" accept=".xlsx,.xls" style="display:none" onchange="handleKohteetFile(this)"/>
-  <span class="upload-status-bar" id="kohteet-status"></span>
 </div>
 
 <div class="app-body">
@@ -428,7 +437,7 @@ document.addEventListener('DOMContentLoaded',function(){
   <!-- EDIT PAGE -->
   <div class="page" id="page-edit">
     <div class="edit-header">
-      <span class="edit-title">✏️ Muokkaa asentajia & jälleenmyyjiä</span>
+      <span class="edit-title">Muokkaa asentajia &amp; jälleenmyyjiä</span>
       <div style="display:flex;gap:8px;align-items:center;">
         <span style="font-size:11px;color:var(--muted)" id="edit-count"></span>
         <button class="btn-ghost" onclick="loadDealers(true)" style="font-size:12px;">🔄 Päivitä</button>
@@ -440,6 +449,31 @@ document.addEventListener('DOMContentLoaded',function(){
         <thead><tr><th>Nimi</th><th>Tyyppi</th><th>Osoite</th><th>Palvelut</th><th>Muistiinpanot</th><th></th></tr></thead>
         <tbody id="dealer-tbody"></tbody>
       </table>
+    </div>
+  </div>
+
+
+  <!-- MYYJÄT PAGE -->
+  <div class="page" id="page-myyjat">
+    <div class="map-wrap"><div id="map-myyjat"></div></div>
+    <div class="sidebar" id="sb-myyjat">
+      <div class="sb-pull" onclick="this.closest('.sidebar').classList.toggle('open')">
+        <div class="sb-pull-bar"></div>
+        <span class="sb-pull-label">Näytä lista</span>
+      </div>
+      <div class="kpi-bar" id="myyjat-kpis">
+        <div class="kpi-cell"><div class="kpi-val" id="m-cnt">–</div><div class="kpi-lbl">Kohteet</div></div>
+        <div class="kpi-cell"><div class="kpi-val" id="m-rev">–</div><div class="kpi-lbl">Liikevaihto</div></div>
+        <div class="kpi-cell"><div class="kpi-val" id="m-sel">Kaikki</div><div class="kpi-lbl">Myyjä</div></div>
+      </div>
+      <div style="padding:10px 14px 4px;display:flex;flex-wrap:wrap;gap:5px;" id="myyja-pills"></div>
+      <div class="job-list" id="myyjat-list">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;padding:32px 20px;text-align:center;">
+          <div style="font-size:32px;">📂</div>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;">Lataa Excel-tiedosto</div>
+          <div style="font-size:11px;color:var(--muted);">Sama tiedosto kuin Kohteet-sivulla</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -456,6 +490,9 @@ document.addEventListener('DOMContentLoaded',function(){
     </button>
     <button class="tab-btn" id="tb-edit" onclick="showPage('edit',this)">
       <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Muokkaa
+    </button>
+    <button class="tab-btn" id="tb-myyjat" onclick="showPage('myyjat',this)">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Myyjät
     </button>
   </div>
 </div>
@@ -564,13 +601,15 @@ function showPage(name,btn){
   document.querySelectorAll('.nav-tab,.tab-btn').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
   const tb=document.getElementById('tb-'+name);if(tb)tb.classList.add('active');
-  // Show/hide filter bar
   document.getElementById('kohteet-filters').style.display=name==='kohteet'?'flex':'none';
-  // Re-render edit table every time tab is opened
+  document.getElementById('nav-upload-btn').style.display=name==='kohteet'?'inline-flex':'none';
+  document.getElementById('kohteet-status').style.display=name==='kohteet'?'inline-flex':'none';
   if(name==='edit')renderDealerTable();
+  if(name==='myyjat'){buildMyyjaP();initMapM();}
   setTimeout(()=>{
     if(name==='dealers'&&mapD)mapD.invalidateSize();
     if(name==='kohteet'&&mapK)mapK.invalidateSize();
+    if(name==='myyjat'&&mapM)mapM.invalidateSize();
   },60);
 }
 
@@ -928,6 +967,150 @@ const TILE='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const MOPT={zoomControl:true,attributionControl:false};
 
 // ── INIT (called after login) ─────────────────────────────────
+
+// ── MYYJÄT PAGE ───────────────────────────────────────────────
+var mapM=null, myyjaActive='all', myyjaMarkers=[];
+
+var SELLER_REGIONS={
+  'Kalle Malmberg':  {color:'#e74c3c', regions:['Lappi','Pohjois-Pohjanmaa','Kainuu']},
+  'Robert Muhola':   {color:'#a855f7', regions:['Keski-Pohjanmaa','Pohjois-Karjala','Pohjois-Savo','Keski-Suomi']},
+  'Timo Lappalainen':{color:'#f59e0b', regions:['Etelä-Pohjanmaa','Satakunta','Pirkanmaa']},
+  'Kaj Östman':      {color:'#14b8a6', regions:['Pohjanmaa','Pirkanmaa']},
+  'Ilkka Toivonen':  {color:'#3b82f6', regions:['Päijät-Häme','Kanta-Häme','Varsinais-Suomi']},
+  'Jaakko Toivonen': {color:'#22c55e', regions:['Etelä-Savo','Etelä-Karjala','Kymenlaakso','Uusimaa']}
+};
+
+// Finland maakunta polygons (simplified WGS84 [lat,lng] pairs)
+var MAAKUNTA_POLYGONS={
+  'Lappi':[[69.1,20.5],[70.0,21.5],[70.6,25.7],[70.1,27.5],[69.7,29.5],[68.5,29.2],[67.8,28.2],[67.2,26.5],[67.0,25.0],[67.5,24.0],[68.0,22.5],[68.5,20.5],[69.1,20.5]],
+  'Pohjois-Pohjanmaa':[[65.0,23.0],[65.5,24.5],[65.8,26.0],[65.5,28.0],[65.0,29.2],[64.0,29.2],[63.8,27.5],[63.5,26.0],[63.5,24.5],[64.0,23.5],[64.5,22.5],[65.0,23.0]],
+  'Kainuu':[[65.8,26.0],[66.0,27.5],[65.8,29.5],[65.0,30.0],[64.0,29.2],[63.8,27.5],[63.5,26.0],[63.5,24.5],[64.5,25.0],[65.8,26.0]],
+  'Keski-Pohjanmaa':[[64.5,23.0],[64.8,24.5],[64.5,25.0],[63.5,24.5],[63.0,23.5],[63.0,22.5],[63.5,22.0],[64.0,22.5],[64.5,23.0]],
+  'Pohjanmaa':[[63.5,21.0],[63.5,22.0],[63.0,22.5],[62.5,22.0],[62.0,21.5],[62.5,20.5],[63.0,20.5],[63.5,21.0]],
+  'Etelä-Pohjanmaa':[[63.5,22.0],[63.0,23.5],[63.5,24.5],[63.0,25.0],[62.5,24.5],[62.0,23.5],[62.0,22.5],[62.5,22.0],[63.0,22.5],[63.5,22.0]],
+  'Satakunta':[[62.0,21.0],[62.5,22.0],[62.0,22.5],[62.0,23.5],[61.5,23.5],[61.0,23.0],[61.0,22.0],[61.5,21.0],[62.0,21.0]],
+  'Pirkanmaa':[[62.0,22.5],[62.0,23.5],[62.5,24.5],[62.5,25.0],[62.0,25.5],[61.5,25.0],[61.0,24.0],[61.0,23.0],[61.5,22.5],[62.0,22.5]],
+  'Keski-Suomi':[[63.5,24.5],[63.5,25.0],[63.5,26.0],[63.8,27.5],[62.8,27.0],[62.5,26.0],[62.5,25.0],[62.5,24.5],[63.0,24.0],[63.5,24.5]],
+  'Pohjois-Savo':[[63.5,26.0],[63.8,27.5],[64.0,29.2],[63.0,29.0],[62.5,28.5],[62.0,27.5],[62.5,27.0],[62.5,26.0],[63.0,26.5],[63.5,26.0]],
+  'Pohjois-Karjala':[[63.8,27.5],[64.0,29.2],[63.5,30.0],[62.5,30.5],[62.0,29.5],[62.0,28.5],[62.5,28.5],[63.0,29.0],[63.8,27.5]],
+  'Etelä-Savo':[[62.5,26.0],[62.5,27.0],[62.0,27.5],[62.0,28.5],[61.5,28.5],[61.0,27.5],[61.0,26.5],[61.5,26.0],[62.0,25.5],[62.5,26.0]],
+  'Etelä-Karjala':[[61.5,27.5],[61.5,28.5],[61.0,29.5],[60.5,29.0],[60.5,28.0],[61.0,27.5],[61.5,27.5]],
+  'Kymenlaakso':[[61.5,25.5],[61.5,26.5],[61.5,27.5],[61.0,27.5],[60.5,27.0],[60.5,26.0],[61.0,25.5],[61.5,25.5]],
+  'Päijät-Häme':[[61.5,24.0],[62.0,25.0],[62.0,25.5],[61.5,25.5],[61.0,25.5],[60.8,25.0],[61.0,24.5],[61.5,24.0]],
+  'Kanta-Häme':[[61.5,23.0],[61.5,24.0],[61.0,24.5],[60.8,25.0],[60.5,24.5],[60.5,23.5],[61.0,23.0],[61.5,23.0]],
+  'Varsinais-Suomi':[[61.0,21.0],[61.5,22.0],[61.5,23.0],[61.0,23.0],[60.5,23.5],[60.0,23.0],[60.0,22.0],[60.5,21.0],[61.0,21.0]],
+  'Uusimaa':[[60.5,23.5],[60.5,24.5],[60.3,25.5],[60.3,26.5],[60.5,27.0],[61.0,27.5],[60.5,27.0],[60.5,26.0],[60.8,25.0],[60.5,24.5],[60.5,23.5]]
+};
+
+function initMapM(){
+  if(!mapM){
+    mapM=L.map('map-myyjat',{zoomControl:true,attributionControl:false}).setView([64.5,26.0],5);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd'}).addTo(mapM);
+    drawSellerRegions();
+  }
+  setTimeout(function(){mapM.invalidateSize();},100);
+  if(kohteetData.length) renderMyyjatMap();
+}
+
+var regionLayers=[];
+function drawSellerRegions(){
+  regionLayers.forEach(function(l){mapM.removeLayer(l);});
+  regionLayers=[];
+  Object.keys(SELLER_REGIONS).forEach(function(seller){
+    var cfg=SELLER_REGIONS[seller];
+    var isActive=(myyjaActive==='all'||myyjaActive===seller);
+    var opacity=isActive?0.25:0.07;
+    cfg.regions.forEach(function(region){
+      var coords=MAAKUNTA_POLYGONS[region];
+      if(!coords)return;
+      var poly=L.polygon(coords,{
+        color:cfg.color, weight:2, opacity:isActive?0.9:0.3,
+        fillColor:cfg.color, fillOpacity:opacity
+      }).addTo(mapM);
+      poly.bindTooltip('<b>'+region+'</b><br><span style="color:'+cfg.color+'">● '+seller+'</span>',{sticky:true,className:'myyja-tooltip'});
+      poly.on('click',function(){filterMyyjat(myyjaActive===seller?'all':seller);});
+      regionLayers.push(poly);
+    });
+  });
+}
+
+function renderMyyjatMap(){
+  myyjaMarkers.forEach(function(m){mapM.removeLayer(m);});
+  myyjaMarkers=[];
+  if(!kohteetData.length)return;
+
+  var filtered=myyjaActive==='all'?kohteetData:kohteetData.filter(function(r){return r.myyja===myyjaActive;});
+  var totalRev=0, cnt=0;
+
+  filtered.forEach(function(r){
+    if(!r.lat||!r.lng||isNaN(r.lat)||isNaN(r.lng))return;
+    var seller=r.myyja||'Tuntematon';
+    var cfg=SELLER_REGIONS[seller];
+    var color=cfg?cfg.color:'#888';
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="'+color+'" opacity="0.85" stroke="white" stroke-width="1.5"/></svg>';
+    var icon=L.divIcon({html:svg,iconSize:[14,14],iconAnchor:[7,7],className:''});
+    var rev=parseFloat(String(r.hinta||'').replace(/[^\d.]/g,''))||0;
+    totalRev+=rev;cnt++;
+    var popup='<div class="popup-body"><div class="popup-name">'+r.nimi+'</div>'
+      +'<div class="popup-addr">'+r.osoite+', '+r.kaupunki+'</div>'
+      +'<div style="margin-top:6px;font-size:11px;color:'+color+'">● '+seller+'</div>'
+      +(rev?'<div style="font-size:11px;margin-top:2px;color:var(--muted)">'+rev.toLocaleString('fi-FI')+'€</div>':'')
+      +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+r.tila+'</div></div>';
+    var m=L.marker([r.lat,r.lng],{icon:icon}).addTo(mapM).bindPopup(popup,{maxWidth:220});
+    myyjaMarkers.push(m);
+  });
+
+  document.getElementById('m-cnt').textContent=cnt;
+  document.getElementById('m-rev').textContent=totalRev>=1000?(totalRev/1000).toFixed(0)+'k€':totalRev+'€';
+  document.getElementById('m-sel').textContent=myyjaActive==='all'?'Kaikki':myyjaActive.split(' ')[0];
+  renderMyyjatList(filtered.filter(function(r){return r.lat&&r.lng;}));
+}
+
+function renderMyyjatList(rows){
+  var el=document.getElementById('myyjat-list');
+  if(!rows.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--muted)">Ei kohtia</div>';return;}
+  var sellers={};
+  rows.forEach(function(r){
+    var s=r.myyja||'Tuntematon';
+    if(!sellers[s])sellers[s]={name:s,cnt:0,rev:0};
+    sellers[s].cnt++;
+    sellers[s].rev+=(parseFloat(String(r.hinta||'').replace(/[^\d.]/g,''))||0);
+  });
+  var list=Object.values(sellers).sort(function(a,b){return b.rev-a.rev;});
+  el.innerHTML=list.map(function(s){
+    var cfg=SELLER_REGIONS[s.name];
+    var color=cfg?cfg.color:'#888';
+    return '<div class="dealer-card" onclick="filterMyyjat(\''+s.name+'\')" style="cursor:pointer;">'
+      +'<div class="card-top"><div class="card-name" style="color:'+color+'">● '+s.name+'</div>'
+      +'<span class="badge inst">'+s.cnt+' kpl</span></div>'
+      +'<div class="card-addr">'+s.rev.toLocaleString('fi-FI')+'€ liikevaihto</div></div>';
+  }).join('');
+}
+
+function filterMyyjat(seller){
+  myyjaActive=seller;
+  drawSellerRegions();
+  renderMyyjatMap();
+  // Update pills
+  document.querySelectorAll('#myyja-pills .mpill').forEach(function(p){
+    p.classList.toggle('on',p.dataset.s===seller||(seller==='all'&&p.dataset.s==='all'));
+  });
+}
+
+function buildMyyjaP(){
+  var el=document.getElementById('myyja-pills');
+  var sellers=['all'].concat(Object.keys(SELLER_REGIONS));
+  el.innerHTML=sellers.map(function(s){
+    var cfg=SELLER_REGIONS[s];
+    var color=cfg?cfg.color:'var(--accent)';
+    var label=s==='all'?'Kaikki':s.split(' ')[0];
+    return '<button class="mpill'+(s==='all'?' on':'')+'" data-s="'+s+'" onclick="filterMyyjat(\''+s+'\')" style="border-color:'+color+';color:'+color+'">'+label+'</button>';
+  }).join('');
+}
+
+// Re-render myyjat map when kohteet data is loaded
+var origProcessKohteet=null;
+
 function initMaps(){
   if(typeof L==='undefined'){setTimeout(initMaps,200);return;}
   const dEl=document.getElementById('map-dealers');
