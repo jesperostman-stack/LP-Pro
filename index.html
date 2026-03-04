@@ -1188,12 +1188,22 @@ function initMaps(){
   const kEl=document.getElementById('map-kohteet');
   const mEl=document.getElementById('map-myyjat');
   if(!dEl||!kEl||!mEl){setTimeout(initMaps,100);return;}
+  // Init myyjat FIRST while its page is briefly active
+  var myPage=document.getElementById('page-myyjat');
+  var dealersPage=document.getElementById('page-dealers');
+  dealersPage.classList.remove('active');
+  myPage.classList.add('active');
+  mapM=L.map(mEl,MOPT).setView([64.5,26.0],5);
+  L.tileLayer(TILE,{maxZoom:19,subdomains:'abc'}).addTo(mapM);
+  drawSellerRegions();
+  // Now switch to dealers page (the real default)
+  myPage.classList.remove('active');
+  dealersPage.classList.add('active');
+  // Init dealers + kohteet (now dealers is visible)
   mapD=L.map(dEl,MOPT).setView([64.5,26.0],5);
   mapK=L.map(kEl,MOPT).setView([64.5,26.0],5);
-  mapM=L.map(mEl,MOPT).setView([64.5,26.0],5);
-  [mapD,mapK,mapM].forEach(m=>L.tileLayer(TILE,{maxZoom:19,subdomains:'abc'}).addTo(m));
-  drawSellerRegions();
-  setTimeout(()=>{mapD.invalidateSize();mapK.invalidateSize();mapM.invalidateSize();},150);
+  [mapD,mapK].forEach(function(m){L.tileLayer(TILE,{maxZoom:19,subdomains:'abc'}).addTo(m);});
+  setTimeout(function(){mapD.invalidateSize();mapK.invalidateSize();},150);
   loadDealers();
 }
 </script>
