@@ -669,6 +669,7 @@ function processKohteet(file){
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
       if(rows.length<2)throw new Error('Tiedosto on tyhjä');
       const H=rows[0];
+      console.log('Excel columns:', H);
       const C={
         etunimi:findCol(H,['Etunimi']),sukunimi:findCol(H,['Sukunimi']),
         lahiosoite:findCol(H,['Lähiosoite']),postinumero:findCol(H,['Postinumero']),
@@ -677,7 +678,7 @@ function processKohteet(file){
         asentajat:findCol(H,['Asentajat']),kansio:findCol(H,['Kansio']),
         menekki:findCol(H,['Menekkien selitteet']),sopimus:findCol(H,['Sopimus pvm']),
         kalenteri:findCol(H,['Ensimmäinen kalenteroitu työ alkaa']),
-        nimi:findCol(H,['Nimi']),tila:findCol(H,['Tila']),kohdevalmis:findCol(H,['Kohde valmis pvm']),
+        nimi:findCol(H,['Nimi']),myyjaCol:findCol(H,['Myyjä','Myyja','Myyjän nimi','Vastuuhenkilö','Vastuumyyjä','Myyjä nimi']),tila:findCol(H,['Tila']),kohdevalmis:findCol(H,['Kohde valmis pvm']),
       };
       const parsed=[];
       for(let i=1;i<rows.length;i++){
@@ -1005,19 +1006,16 @@ var mapM=null, myyjaActive='all', myyjaMarkers=[];
 // Normalize seller name: Excel uses "Sukunimi Etunimi", app uses "Etunimi Sukunimi"
 function normalizeMyyja(raw){
   if(!raw)return raw;
-  // Check if raw matches a key directly
-  if(SELLER_REGIONS[raw])return raw;
-  // Try reversing "Sukunimi Etunimi" -> "Etunimi Sukunimi"
-  var parts=raw.trim().split(' ');
+  var s=raw.trim();
+  // Direct match
+  if(SELLER_REGIONS[s])return s;
+  // Excel format is "Sukunimi Etunimi" -> reverse to "Etunimi Sukunimi"
+  var parts=s.split(' ');
   if(parts.length>=2){
     var reversed=parts.slice(1).join(' ')+' '+parts[0];
     if(SELLER_REGIONS[reversed])return reversed;
-    // Also try just matching by last name
-    for(var k in SELLER_REGIONS){
-      if(k.split(' ').pop()===parts[0]||k.split(' ')[0]===parts[parts.length-1])return k;
-    }
   }
-  return raw;
+  return s; // return as-is, will be filtered out if not a known seller
 }
 
 var SELLER_REGIONS={
@@ -1026,7 +1024,9 @@ var SELLER_REGIONS={
   'Timo Lappalainen':{color:'#f59e0b', regions:['Etelä-Pohjanmaa','Satakunta','Pirkanmaa']},
   'Kaj Östman':      {color:'#14b8a6', regions:['Pohjanmaa','Pirkanmaa']},
   'Ilkka Toivonen':  {color:'#3b82f6', regions:['Päijät-Häme','Kanta-Häme','Varsinais-Suomi']},
-  'Jaakko Toivonen': {color:'#22c55e', regions:['Etelä-Savo','Etelä-Karjala','Kymenlaakso','Uusimaa']}
+  'Vesa Malmberg':   {color:'#f97316', regions:[]},
+  'Jaakko Toivonen': {color:'#22c55e', regions:['Etelä-Savo','Etelä-Karjala','Kymenlaakso','Uusimaa']},
+  'Vesa Malmberg':    {color:'#f97316', regions:[]}
 };
 
 // Finland maakunta polygons (simplified WGS84 [lat,lng] pairs)
