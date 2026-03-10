@@ -567,7 +567,13 @@ const API='/api/dealers';
 // SUPABASE
 const SUPA_URL='https://kdybokrpyxqfygfmanzx.supabase.co';
 const SUPA_KEY='sb_publishable_yCzyPAeHpoDd14PLQeg4hA_UIo2XOWv';
-function supaFetch(path,opts){return fetch(SUPA_URL+'/rest/v1/'+path,Object.assign({headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'}},opts||{}));}
+function supaFetch(path,opts){
+  var base={headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'}};
+  var merged=Object.assign({},base,opts||{});
+  // Merge headers separately so opts.headers don't wipe base headers
+  merged.headers=Object.assign({},base.headers,(opts&&opts.headers)||{});
+  return fetch(SUPA_URL+'/rest/v1/'+path,merged);
+}
 const SVCS=['LVI','SÄHKÖMIES','VILP Sähkö','Putki VILP + KV/LV','ILP','KYLMÄ Alle 3.kg','KYLMÄ YLI 3.kg','Huolto','KIINTEISTÖ HUOLTO'];
 // Postcode geocoder using Nominatim (OpenStreetMap), cached per session
 var FI_PC={};  // Will be populated by geocoding
@@ -717,11 +723,26 @@ function createGeocacheTable(callback){
 }
 
 // Save a geocoded result to Supabase
+var GEO_SAVE_QUEUE=[];
+var GEO_SAVE_TIMER=null;
+
 function saveGeoCache(key,lat,lng){
+  GEO_SAVE_QUEUE.push({key:key,lat:lat,lng:lng});
+  if(GEO_SAVE_QUEUE.length>=50)flushGeoSaveQueue();
+  else if(!GEO_SAVE_TIMER)GEO_SAVE_TIMER=setTimeout(flushGeoSaveQueue,3000);
+}
+
+function flushGeoSaveQueue(){
+  if(GEO_SAVE_TIMER){clearTimeout(GEO_SAVE_TIMER);GEO_SAVE_TIMER=null;}
+  if(!GEO_SAVE_QUEUE.length)return;
+  var batch=GEO_SAVE_QUEUE.splice(0,200);
   supaFetch('geocache',{
     method:'POST',
-    headers:{'Prefer':'resolution=ignore-duplicates'},
-    body:JSON.stringify({key:key,lat:lat,lng:lng})
+    headers:{'Prefer':'resolution=merge-duplicates'},
+    body:JSON.stringify(batch)
+  }).then(function(r){
+    if(!r.ok)r.text().then(function(t){console.warn('GeoCache save error:',r.status,t);});
+    else console.log('GeoCache saved',batch.length,'entries');
   }).catch(function(e){console.warn('GeoCache save failed:',e);});
 }
 
@@ -1484,5 +1505,6 @@ function initMaps(){
     <button class="login-btn" onclick="doLogin()">Kirjaudu sisään →</button>
   </div>
 </div>
+<script>window.addEventListener('beforeunload',function(){flushGeoSaveQueue();});</script>
 </body>
 </html>
