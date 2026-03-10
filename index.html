@@ -576,42 +576,8 @@ function supaFetch(path,opts){
 const SVCS=['LVI','SÄHKÖMIES','VILP Sähkö','Putki VILP + KV/LV','ILP','KYLMÄ Alle 3.kg','KYLMÄ YLI 3.kg','Huolto','KIINTEISTÖ HUOLTO'];
 // Postcode geocoder using Nominatim (OpenStreetMap), cached per session
 var FI_PC={};  // Will be populated by geocoding
-var GEO_CACHE={};  // postcode -> [lat,lng]
-var GEO_QUEUE=[];  // postcodes waiting to be geocoded
-var GEO_RUNNING=false;
 
-function queueGeocode(postcode, callback){
-  var pc=String(postcode||'').split('.')[0].padStart(5,'0');
-  if(!pc||pc==='00000')return;
-  if(GEO_CACHE[pc]){if(callback)callback(pc,GEO_CACHE[pc]);return;}
-  GEO_QUEUE.push({pc:pc,cb:callback});
-  if(!GEO_RUNNING)runGeocodeQueue();
-}
 
-function runGeocodeQueue(){
-  if(!GEO_QUEUE.length){GEO_RUNNING=false;return;}
-  GEO_RUNNING=true;
-  var item=GEO_QUEUE.shift();
-  var pc=item.pc;
-  if(GEO_CACHE[pc]){if(item.cb)item.cb(pc,GEO_CACHE[pc]);setTimeout(runGeocodeQueue,0);return;}
-  var url='https://nominatim.openstreetmap.org/search?postalcode='+pc+'&countrycodes=fi&format=json&limit=1';
-  fetch(url,{headers:{'Accept-Language':'fi'}})
-    .then(function(r){return r.json();})
-    .then(function(data){
-      if(data&&data.length){
-        var lat=parseFloat(data[0].lat),lng=parseFloat(data[0].lon);
-        GEO_CACHE[pc]=[lat,lng];
-        FI_PC[pc]=[lat,lng];
-      }
-      if(item.cb)item.cb(pc,GEO_CACHE[pc]||null);
-      setTimeout(runGeocodeQueue,110); // Nominatim rate limit: max 1 req/sec
-    })
-    .catch(function(){
-      if(item.cb)item.cb(pc,null);
-      setTimeout(runGeocodeQueue,110);
-    });
-}
-const ALI={'karleby':'Kokkola','jakobstad':'Pietarsaari','borgå':'Porvoo','ekenäs':'Tammisaari','raseborg':'Raasepori','hangö':'Hanko','lovisa':'Loviisa','nådendal':'Naantali','kristinestad':'Kristiinankaupunki','övermalax':'Maalahti','nykarleby':'Uusikarleby','uusikaarleby':'Uusikarleby','oravaistentehdas':'Oravaisfabrik','kokkkola':'Kokkola','lappenranta':'Lappeenranta','vabtaa':'Vantaa','pohjois-savo':'Varkaus','jns':'Joensuu','pirkanmaa':'Tampere','porvoo':'Porvoo','kello':'Kello','lapinlahti':'Lapinlahti','kausala':'Kausala','korpilahti':'Korpilahti','vieremä':'Vieremä','hangonkylä':'Hangonkylä','eno':'Eno','suomussalmi kk':'Suomussalmi','nurmijärvi / rajamäki':'Nurmijärvi','siuro / nokia':'Nokia','himanka/hillilä':'Himanka','juurikkalahti/sotkamo':'Sotkamo','alavus as':'Alavus','hankasalmi as':'Hankasalmi','ypäjä as':'Ypäjä','vähä kyrö':'Vähäkyrö','hamari / porvoo':'Porvoo','pilkanmaa/ kouvola':'Kouvola','jäkärlä/turku':'Turku','tortinmäki/turku':'Turku','inkoo keskus':'Inkoo','edsevö':'Edsevö','kalaniemi':'Kalaniemi','yli-kiiminki':'Ylikiiminki','yli-ii':'Yli-II','uusikaarlepyy':'Uusikaarlepyy','kovuola':'Kouvola','lentäjäntie 15':'Helsinki','kollektor scan':'Helsinki','yttermark':'Närpes','pulp':'Äänekoski','louhioja':'Louhioja','singsby':'Singsby','istunmäki':'Jyväskylä','mannila':'Tampere','suomussalmi kk':'Suomussalmi','Suomussalmi kk':'Suomussalmi','LAPINLAHTI':'Lapinlahti','ENO':'Eno','KEITELE':'Keitele','KELLO':'Kello','VIINIJÄRVI':'Viinijärvi','ILMARINEN':'Ilmarinen','YTTERMARK':'Närpes','PULP':'Äänekoski','LOUHIOJA':'Louhioja','kangasala as':'Kangasala','siuro / nokia':'Nokia','himanka/hillilä':'Himanka','juurikkalahti/sotkamo':'Sotkamo','pilkanmaa/ kouvola':'Kouvola','jäkärlä/turku':'Turku','tortinmäki/turku':'Turku','yli-ii':'Yli-II','ranta-töysä':'Ranta-töysä','vieremä':'Vieremä','nummi-pusula':'Nummi-Pusula','yli-ullava':'Yli-Ullava'};
 
 const HARDCODED_DEALERS=[
 {id:1,name:"Emil Finnilä",address:"Forskansintie 3, 68410 Alaveteli",type:"installer",services:["LVI","SÄHKÖMIES","VILP Sähkö","Putki VILP + KV/LV","ILP","Huolto"],phone:"",notes:"",lat:63.7167,lng:23.3333},
