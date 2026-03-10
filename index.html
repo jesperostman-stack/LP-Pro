@@ -649,26 +649,59 @@ function geoKey(addr,postcode,city){
 }
 
 // Load all cached coords from Supabase geocache table at startup
+var GEO_CACHE_READY=false;
+var GEO_CACHE_CALLBACKS=[];
+
+function onGeoCacheReady(fn){
+  if(GEO_CACHE_READY){fn();return;}
+  GEO_CACHE_CALLBACKS.push(fn);
+}
+
+function geoCacheLoaded(){
+  GEO_CACHE_READY=true;
+  GEO_CACHE_CALLBACKS.forEach(function(fn){fn();});
+  GEO_CACHE_CALLBACKS=[];
+}
+
 function loadGeoCache(callback){
-  supaFetch('geocache?select=key,lat,lng&limit=10000')
-    .then(function(r){
-      if(r.status===404||r.status===400){
-        // Table doesn't exist yet — create it
-        console.warn('geocache table missing, creating...');
-        createGeocacheTable(callback);
-        return null;
-      }
-      return r.json();
-    })
-    .then(function(rows){
-      if(!rows)return;
-      if(Array.isArray(rows)){
-        rows.forEach(function(row){GEO_CACHE[row.key]=[parseFloat(row.lat),parseFloat(row.lng)];});
-        console.log('GeoCache loaded:',Object.keys(GEO_CACHE).length,'entries');
-      }
-      if(callback)callback();
-    })
-    .catch(function(e){console.warn('GeoCache load failed:',e);if(callback)callback();});
+  // Paginate through all geocache rows (Supabase max 1000/request)
+  function fetchPage(offset,acc){
+    supaFetch('geocache?select=key,lat,lng&limit=1000&offset='+offset)
+      .then(function(r){
+        if(r.status===404||r.status===400||r.status===42){
+          console.warn('geocache table missing or error:',r.status);
+          if(callback)callback();
+          geoCacheLoaded();
+          return null;
+        }
+        return r.json();
+      })
+      .then(function(rows){
+        if(!rows)return;
+        if(Array.isArray(rows)){
+          rows.forEach(function(row){
+            GEO_CACHE[row.key]=[parseFloat(row.lat),parseFloat(row.lng)];
+          });
+          if(rows.length===1000){
+            // More pages may exist
+            fetchPage(offset+1000, acc+rows.length);
+          } else {
+            console.log('GeoCache loaded:',(acc+rows.length),'entries');
+            if(callback)callback();
+            geoCacheLoaded();
+          }
+        } else {
+          if(callback)callback();
+          geoCacheLoaded();
+        }
+      })
+      .catch(function(e){
+        console.warn('GeoCache load failed:',e);
+        if(callback)callback();
+        geoCacheLoaded();
+      });
+  }
+  fetchPage(0,0);
 }
 
 function createGeocacheTable(callback){
@@ -787,12 +820,24 @@ function showPage(name,btn){
 }
 
 // ── EXCEL UPLOAD ──────────────────────────────────────────────
-function handleKohteetFile(inp){if(inp.files[0])processKohteet(inp.files[0]);}
+function handleKohteetFile(inp){
+  if(!inp.files[0])return;
+  var file=inp.files[0];
+  if(GEO_CACHE_READY){
+    processKohteet(file);
+  } else {
+    setUploadStatus('⏳ Ladataan paikkatietoja...','loading');
+    onGeoCacheReady(function(){processKohteet(file);});
+  }
+}
 // Also support drag/drop on the kohteet page
 document.addEventListener('DOMContentLoaded',()=>{
   const pg=document.getElementById('page-kohteet');
   pg.addEventListener('dragover',e=>{e.preventDefault();});
-  pg.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f&&f.name.match(/\.xlsx?$/i))processKohteet(f);});
+  pg.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f&&f.name.match(/\.xlsx?$/i)){
+    if(GEO_CACHE_READY){processKohteet(f);}
+    else{setUploadStatus('⏳ Ladataan paikkatietoja...','loading');onGeoCacheReady(function(){processKohteet(f);});}
+  }});
 });
 
 function setUploadStatus(msg,type){
@@ -849,26 +894,35 @@ function processKohteet(file){
         });
       }
       kohteetData=parsed;
-      const total=parsed.length,withCoord=parsed.filter(r=>r.ok).length;
-      // Async geocode all unique postcodes then update marker positions
-      // Geocode uncached rows using full address
+      const total=parsed.length;
+
+      // ── Populate filters & render immediately with whatever coords we have ──
+      const asentajaSet=new Set();kohteetData.forEach(r=>{if(r.asentajat)r.asentajat.split(',').forEach(a=>{const t=a.trim();if(t)asentajaSet.add(t);});});
+      populateSel('f-asentaja',[...asentajaSet].sort(),'Kaikki');
+      const myyjaSet=new Set();kohteetData.forEach(r=>{if(r.myyja)myyjaSet.add(r.myyja);});
+      populateSel('f-myyja',[...myyjaSet].sort(),'Kaikki');
+      const yrs=[...new Set(kohteetData.map(r=>{const d=parseDate(r.kalenteri);return d?d.getFullYear():null;}).filter(Boolean))].sort();
+      populateSel('f-year',yrs,'Kaikki');
+      const fYear=document.getElementById('f-year');
+      if(fYear&&[...fYear.options].some(o=>o.value==='2026'))fYear.value='2026';
+      applyKohteet();
+      setUploadStatus('✓ '+total+' riviä · ladattu','');
+      showToast('✓ '+total+' riviä ladattu');
+
+      // ── Background geocoding for uncached rows ──
       const uncachedRows=parsed.filter(r=>!r.ok&&r.lahiosoite);
       if(uncachedRows.length){
-        setUploadStatus('Paikantaa '+uncachedRows.length+' osoitetta...','');
+        console.log('Geocoding',uncachedRows.length,'addresses in background...');
         var done=0,total2=uncachedRows.length;
         uncachedRows.forEach(function(row){
           queueGeocode(row.lahiosoite,row.postinumero,row.city,function(coord2){
             done++;
-            if(coord2){
-              row.lat=coord2[0]; row.lng=coord2[1]; row.ok=true;
-            }
-            if(done===total2){
+            if(coord2){row.lat=coord2[0];row.lng=coord2[1];row.ok=true;}
+            // Re-render every 50 geocoded
+            if(done%50===0||done===total2){
               applyKohteet();
               if(mapM)renderMyyjatMap();
-              setUploadStatus('✓ '+total+' riviä · '+kohteetData.filter(r=>r.ok).length+' kartalla','');
-            } else if(done%25===0){
-              setUploadStatus('Paikantaa... '+done+'/'+total2,'');
-              applyKohteet();
+              setUploadStatus('✓ '+total+' riviä · paikannettu '+done+'/'+total2,'');
             }
           });
         });
