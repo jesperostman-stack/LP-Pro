@@ -629,6 +629,19 @@ function geoCacheLoaded(){
   GEO_CACHE_READY=true;
   GEO_CACHE_CALLBACKS.forEach(function(fn){fn();});
   GEO_CACHE_CALLBACKS=[];
+  // If Excel already loaded, re-apply coords from freshly loaded cache
+  if(kohteetData.length){
+    var updated=0;
+    kohteetData.forEach(function(row){
+      if(!row.ok&&row.lahiosoite){
+        var k=geoKey(row.lahiosoite,row.postinumero,row.city);
+        var cached=GEO_CACHE[k];
+        if(cached){row.lat=cached[0];row.lng=cached[1];row.ok=true;updated++;}
+      }
+    });
+    if(updated>0){applyKohteet();if(mapM)renderMyyjatMap();
+      console.log('GeoCache applied',updated,'coords to existing data');}
+  }
 }
 
 function loadGeoCache(callback){
@@ -726,7 +739,7 @@ function runGeocodeQueue(){
   }
   // Full address geocoding via Photon (komoot) - no CORS issues, OSM data
   var query=encodeURIComponent(item.addr+' '+item.postcode+' '+item.city+' Finland');
-  var url='https://photon.komoot.io/api/?q='+query+'&limit=1&lang=fi&bbox=19.0,59.5,31.6,70.1';
+  var url='https://photon.komoot.io/api/?q='+query+'&limit=1&lang=fi&lat=64.0&lon=26.0';
   fetch(url)
     .then(function(r){return r.json();})
     .then(function(data){
@@ -739,7 +752,7 @@ function runGeocodeQueue(){
         saveGeoCache(item.key,coord[0],coord[1]);
       } else {
         // Fallback: postcode only
-        var url2='https://photon.komoot.io/api/?q='+encodeURIComponent(item.postcode+' Finland')+'&limit=1&lang=fi';
+        var url2='https://photon.komoot.io/api/?q='+encodeURIComponent(item.postcode+' Finland')+'&limit=1&lang=fi&lat=64.0&lon=26.0';
         fetch(url2)
           .then(function(r2){return r2.json();})
           .then(function(d2){
@@ -876,11 +889,19 @@ function processKohteet(file){
           menekki:String(r[C.menekki]||'').trim(),sopimus:r[C.sopimus]||'',
           kalenteri:r[C.kalenteri]||'',nimi:String(r[C.nimi]||'').trim(),myyja:normalizeMyyja(String(r[C.nimi]||'').trim()),
           tila:String(r[C.tila]||'').trim(),kohdevalmis:r[C.kohdevalmis]||'',
-          lat:coord?(coord[0]+(Math.random()-0.5)*0.008):null,
-          lng:coord?(coord[1]+(Math.random()-0.5)*0.012):null,ok:!!coord,
+          lat:coord?coord[0]:null,
+          lng:coord?coord[1]:null,ok:!!coord,
         });
       }
       kohteetData=parsed;
+      // Re-apply cached coords in case GEO_CACHE loaded after parsing
+      kohteetData.forEach(function(row){
+        if(!row.ok&&row.lahiosoite){
+          var k=geoKey(row.lahiosoite,row.postinumero,row.city);
+          var cached=GEO_CACHE[k];
+          if(cached){row.lat=cached[0];row.lng=cached[1];row.ok=true;}
+        }
+      });
       const total=parsed.length;
 
       // Render immediately with cached coords, geocode rest in background
@@ -1136,7 +1157,7 @@ function setModalType(t){modalType=t;document.getElementById('tbtn-inst').classL
 function geocodeAddr(){
   var addr=document.getElementById('m-addr').value.trim();if(!addr)return;
   var gs=document.getElementById('geo-status');gs.textContent='Haetaan…';gs.className='geo-status';
-  fetch('https://photon.komoot.io/api/?q='+encodeURIComponent(addr+' Finland')+'&limit=1&lang=fi&bbox=19.0,59.5,31.6,70.1')
+  fetch('https://photon.komoot.io/api/?q='+encodeURIComponent(addr+' Finland')+'&limit=1&lang=fi&lat=64.0&lon=26.0')
     .then(function(r){return r.json();})
     .then(function(d){
       var f0=d&&d.features&&d.features[0];
@@ -1167,7 +1188,7 @@ function saveDealer(){
   }
   if(isNaN(lat)||isNaN(lng)){
     showToast('Haetaan koordinaatteja…','inf');
-    fetch('https://photon.komoot.io/api/?q='+encodeURIComponent(addr+' Finland')+'&limit=1&lang=fi&bbox=19.0,59.5,31.6,70.1')
+    fetch('https://photon.komoot.io/api/?q='+encodeURIComponent(addr+' Finland')+'&limit=1&lang=fi&lat=64.0&lon=26.0')
       .then(function(r){return r.json();})
       .then(function(d){var f0=d&&d.features&&d.features[0];if(f0){lat=f0.geometry.coordinates[1];lng=f0.geometry.coordinates[0];}if(isNaN(lat)||isNaN(lng)){lat=64.5;lng=26.0;}commitSave(lat,lng);})
       .catch(function(){commitSave(64.5,26.0);});
