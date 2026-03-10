@@ -724,27 +724,29 @@ function runGeocodeQueue(){
     if(item.cb)item.cb(GEO_CACHE[item.key]);
     setTimeout(runGeocodeQueue,0);return;
   }
-  // Full address geocoding via Nominatim
-  var query=encodeURIComponent(item.addr+', '+item.postcode+' '+item.city+', Finland');
-  var url='https://nominatim.openstreetmap.org/search?q='+query+'&format=json&limit=1&countrycodes=fi';
-  fetch(url,{headers:{'Accept-Language':'fi','User-Agent':'LP-Pro/1.0'}})
+  // Full address geocoding via Photon (komoot) - no CORS issues, OSM data
+  var query=encodeURIComponent(item.addr+' '+item.postcode+' '+item.city+' Finland');
+  var url='https://photon.komoot.io/api/?q='+query+'&limit=1&lang=fi&bbox=19.0,59.5,31.6,70.1';
+  fetch(url)
     .then(function(r){return r.json();})
     .then(function(data){
       var coord=null;
-      if(data&&data.length){
-        var lat=parseFloat(data[0].lat),lng=parseFloat(data[0].lon);
-        coord=[lat+(Math.random()-0.5)*0.0002, lng+(Math.random()-0.5)*0.0003];
+      if(data&&data.features&&data.features.length){
+        var f=data.features[0];
+        var lng2=f.geometry.coordinates[0], lat2=f.geometry.coordinates[1];
+        coord=[lat2+(Math.random()-0.5)*0.0002, lng2+(Math.random()-0.5)*0.0003];
         GEO_CACHE[item.key]=coord;
         saveGeoCache(item.key,coord[0],coord[1]);
       } else {
-        // Fallback: postcode-only query
-        var url2='https://nominatim.openstreetmap.org/search?postalcode='+item.postcode+'&countrycodes=fi&format=json&limit=1';
-        fetch(url2,{headers:{'Accept-Language':'fi'}})
+        // Fallback: postcode only
+        var url2='https://photon.komoot.io/api/?q='+encodeURIComponent(item.postcode+' Finland')+'&limit=1&lang=fi';
+        fetch(url2)
           .then(function(r2){return r2.json();})
           .then(function(d2){
-            if(d2&&d2.length){
-              coord=[parseFloat(d2[0].lat)+(Math.random()-0.5)*0.003,
-                     parseFloat(d2[0].lon)+(Math.random()-0.5)*0.005];
+            if(d2&&d2.features&&d2.features.length){
+              var f2=d2.features[0];
+              coord=[f2.geometry.coordinates[1]+(Math.random()-0.5)*0.003,
+                     f2.geometry.coordinates[0]+(Math.random()-0.5)*0.005];
               GEO_CACHE[item.key]=coord;
               saveGeoCache(item.key,coord[0],coord[1]);
             }
@@ -754,7 +756,7 @@ function runGeocodeQueue(){
         return;
       }
       if(item.cb)item.cb(coord);
-      setTimeout(runGeocodeQueue,110); // 1 req/sec Nominatim limit
+      setTimeout(runGeocodeQueue,110);
     })
     .catch(function(){if(item.cb)item.cb(null);setTimeout(runGeocodeQueue,110);});
 }
@@ -919,7 +921,7 @@ const myyjaSet=new Set();kohteetData.forEach(r=>{if(r.myyja)myyjaSet.add(r.myyja
       const fYear=document.getElementById('f-year');
       if(fYear&&[...fYear.options].some(o=>o.value==='2026'))fYear.value='2026';
       applyKohteet();
-      setUploadStatus(`✓ ${total} riviä · ${withCoord} kartalla`,'');
+      setUploadStatus(`✓ ${total} riviä · ${kohteetData.filter(r=>r.ok).length} kartalla`,'');
       showToast(`✓ ${total} kohdetta ladattu`,'ok');
       [50,200,500].forEach(t=>setTimeout(()=>{if(mapK)mapK.invalidateSize();},t));
     }catch(err){
@@ -1134,10 +1136,11 @@ function setModalType(t){modalType=t;document.getElementById('tbtn-inst').classL
 function geocodeAddr(){
   var addr=document.getElementById('m-addr').value.trim();if(!addr)return;
   var gs=document.getElementById('geo-status');gs.textContent='Haetaan…';gs.className='geo-status';
-  fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(addr+', Finland')+'&limit=1')
+  fetch('https://photon.komoot.io/api/?q='+encodeURIComponent(addr+' Finland')+'&limit=1&lang=fi&bbox=19.0,59.5,31.6,70.1')
     .then(function(r){return r.json();})
     .then(function(d){
-      if(d[0]){document.getElementById('m-lat').value=parseFloat(d[0].lat).toFixed(5);document.getElementById('m-lng').value=parseFloat(d[0].lon).toFixed(5);gs.textContent='✓ '+d[0].display_name.split(',').slice(0,2).join(',');gs.className='geo-status ok';}
+      var f0=d&&d.features&&d.features[0];
+      if(f0){document.getElementById('m-lat').value=f0.geometry.coordinates[1].toFixed(5);document.getElementById('m-lng').value=f0.geometry.coordinates[0].toFixed(5);var nm=(f0.properties.name||f0.properties.street||'');gs.textContent='✓ '+nm;gs.className='geo-status ok';}
       else{gs.textContent='Osoitetta ei löydy';gs.className='geo-status err';}
     }).catch(function(){gs.textContent='Verkkovirhe';gs.className='geo-status err';});
 }
@@ -1164,9 +1167,9 @@ function saveDealer(){
   }
   if(isNaN(lat)||isNaN(lng)){
     showToast('Haetaan koordinaatteja…','inf');
-    fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(addr+', Finland')+'&limit=1')
+    fetch('https://photon.komoot.io/api/?q='+encodeURIComponent(addr+' Finland')+'&limit=1&lang=fi&bbox=19.0,59.5,31.6,70.1')
       .then(function(r){return r.json();})
-      .then(function(d){if(d[0]){lat=parseFloat(d[0].lat);lng=parseFloat(d[0].lon);}if(isNaN(lat)||isNaN(lng)){lat=64.5;lng=26.0;}commitSave(lat,lng);})
+      .then(function(d){var f0=d&&d.features&&d.features[0];if(f0){lat=f0.geometry.coordinates[1];lng=f0.geometry.coordinates[0];}if(isNaN(lat)||isNaN(lng)){lat=64.5;lng=26.0;}commitSave(lat,lng);})
       .catch(function(){commitSave(64.5,26.0);});
   } else {commitSave(lat,lng);}
 }
