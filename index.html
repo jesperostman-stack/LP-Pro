@@ -280,9 +280,8 @@ function doLogin(){
     document.getElementById('login-pw').focus();
   }
 }
-document.addEventListener('DOMContentLoaded',function(){
-  loadGeoCache();
 
+document.addEventListener('DOMContentLoaded',function(){
   var inp=document.getElementById('login-pw');
   if(inp)inp.addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 });
@@ -644,6 +643,39 @@ let editId=null,modalType='installer';
 
 // ── UTILS ─────────────────────────────────────────────────────
 function normCity(s){if(!s)return'';const l=s.trim().toLowerCase();if(ALI[l])return ALI[l];return l.charAt(0).toUpperCase()+l.slice(1);}
+
+const ALI={'karleby':'Kokkola','jakobstad':'Pietarsaari','borgå':'Porvoo','ekenäs':'Tammisaari','raseborg':'Raasepori','hangö':'Hanko','lovisa':'Loviisa','nådendal':'Naantali','kristinestad':'Kristiinankaupunki','övermalax':'Maalahti','nykarleby':'Uusikarleby','uusikaarleby':'Uusikarleby','oravaistentehdas':'Oravaisfabrik','kokkkola':'Kokkola','lappenranta':'Lappeenranta','vabtaa':'Vantaa','pohjois-savo':'Varkaus','jns':'Joensuu','pirkanmaa':'Tampere','porvoo':'Porvoo','kello':'Kello','lapinlahti':'Lapinlahti','kausala':'Kausala','korpilahti':'Korpilahti','vieremä':'Vieremä','hangonkylä':'Hangonkylä','eno':'Eno','suomussalmi kk':'Suomussalmi','nurmijärvi / rajamäki':'Nurmijärvi','siuro / nokia':'Nokia','himanka/hillilä':'Himanka','juurikkalahti/sotkamo':'Sotkamo','alavus as':'Alavus','hankasalmi as':'Hankasalmi','ypäjä as':'Ypäjä','vähä kyrö':'Vähäkyrö','hamari / porvoo':'Porvoo','pilkanmaa/ kouvola':'Kouvola','jäkärlä/turku':'Turku','tortinmäki/turku':'Turku','inkoo keskus':'Inkoo','edsevö':'Edsevö','kalaniemi':'Kalaniemi','yli-kiiminki':'Ylikiiminki','yli-ii':'Yli-II','uusikaarlepyy':'Uusikaarlepyy','kovuola':'Kouvola','lentäjäntie 15':'Helsinki','kollektor scan':'Helsinki','yttermark':'Närpes','pulp':'Äänekoski','louhioja':'Louhioja','singsby':'Singsby','istunmäki':'Jyväskylä','mannila':'Tampere','suomussalmi kk':'Suomussalmi','Suomussalmi kk':'Suomussalmi','LAPINLAHTI':'Lapinlahti','ENO':'Eno','KEITELE':'Keitele','KELLO':'Kello','VIINIJÄRVI':'Viinijärvi','ILMARINEN':'Ilmarinen','YTTERMARK':'Närpes','PULP':'Äänekoski','LOUHIOJA':'Louhioja','kangasala as':'Kangasala','siuro / nokia':'Nokia','himanka/hillilä':'Himanka','juurikkalahti/sotkamo':'Sotkamo','pilkanmaa/ kouvola':'Kouvola','jäkärlä/turku':'Turku','tortinmäki/turku':'Turku','yli-ii':'Yli-II','ranta-töysä':'Ranta-töysä','vieremä':'Vieremä','nummi-pusula':'Nummi-Pusula','yli-ullava':'Yli-Ullava'};
+
+const HARDCODED_DEALERS=[
+{id:1,name:"Emil Finnilä",address:"Forskansintie 3, 68410 Alaveteli",type:"installer",services:["LVI","SÄHKÖMIES","VILP Sähkö","Putki VILP + KV/LV","ILP","Huolto"],phone:"",notes:"",lat:63.7167,lng:23.3333},
+{id:2,name:"Kalle Hämäläinen",address:"Tahvosentie 15, 40520 Jyväskylä",type:"installer",services:["VILP Sähkö","ILP","Huolto"],phone:"",notes:"",lat:62.2415,lng:25.7482},
+{id:3,name:"Joosua Kaakinen",address:"Takatie 79, 91100 Ii",type:"installer",services:["SÄHKÖMIES","VILP Sähkö","ILP","Huolto"],phone:"",notes:"",lat:65.3167,lng:25.3833},
+{id:4,name:"Matias Kangastie",address:"Mustikkamäentie 25, 67700 Kokkola",type:"installer",services:["SÄHKÖMIES","VILP Sähkö","ILP","Huolto"],phone:"",notes:"",lat:63.8374,lng:23.1262},
+{id:5,name:"Jussi-Pekka Mantila",address:"Perkkiöntie 106, 84100 Ylivieska",type:"installer",services:["LVI","Putki VILP + KV/LV","ILP","Huolto"],phone:"",notes:"",lat:64.072,lng:24.5605},
+{id:6,name:"Juho Mikkola",address:"Roinilantie 6A, 90440 Kempele",type:"installer",services:["LVI","SÄHKÖMIES","VILP Sähkö","Putki VILP + KV/LV","ILP","Huolto"],phone:"",notes:"",lat:64.9171,lng:25.5043},
+{id:7,name:"Jere Nykänen",address:"Piennartie 15, 16900 Lammi",type:"installer",services:["SÄHKÖMIES","ILP","Huolto"],phone:"",notes:"",lat:61.0833,lng:25.0},
+{id:8,name:"Veeti Suomalainen",address:"Teollisuuskatu 28B 46, 00520 Helsinki",type:"installer",services:["SÄHKÖMIES","VILP Sähkö","ILP","Huolto"],phone:"",notes:"",lat:60.1699,lng:24.9384},
+{id:9,name:"Perttu Tikkanen",address:"Laajavuorentie 7 A 4, 40740 Jyväskylä",type:"installer",services:["LVI","Putki VILP + KV/LV","ILP","Huolto"],phone:"",notes:"",lat:62.2415,lng:25.7482},
+{id:10,name:"Teemu Valma",address:"Palsantie 90, 23600 Kalanti",type:"installer",services:["SÄHKÖMIES","VILP Sähkö","ILP","Huolto"],phone:"",notes:"",lat:60.8187,lng:21.5525},
+{id:11,name:"Jani Vornanen",address:"Reviirikatu 19A, 70840 Kuopio",type:"installer",services:["LVI","Putki VILP + KV/LV","ILP","Huolto"],phone:"",notes:"",lat:62.8924,lng:27.678},
+{id:12,name:"Tino Behm",address:"Vernissakatu 5 A 17, 01300 Vantaa",type:"installer",services:["SÄHKÖMIES","Putki VILP + KV/LV","ILP","Huolto"],phone:"",notes:"",lat:60.2952,lng:25.0379},
+{id:201,name:"Vesa Kärki / Käre Oy",address:"Hakasenraitti 29, 40820 Haapaniemi",type:"reseller",services:["LVI","Putki VILP + KV/LV","ILP","Huolto"],phone:"040 5910811",notes:"Ei sähkömiehen täyttä osaamista, tekee huoltoa ja myy/asentaa laitetta",lat:63.1,lng:27.7333},
+{id:202,name:"Tuomo Huusko / Tuomon talotekniikka Oy",address:"Nurmikkatie 6, 80260 Joensuu",type:"reseller",services:["LVI","SÄHKÖMIES","VILP Sähkö","Putki VILP + KV/LV","ILP","Huolto"],phone:"044 2822807",notes:"Sähkö- Kylmä- ja putkiosaaminen",lat:62.601,lng:29.7636},
+{id:203,name:"Maunu Rantanen / LVI-Cupa Oy",address:"Myrskypilvenkuja 9, 96190 Rovaniemi",type:"reseller",services:["LVI","SÄHKÖMIES","VILP Sähkö","Putki VILP + KV/LV","ILP","KYLMÄ Alle 3.kg","Huolto"],phone:"0509108407",notes:"Innostui, tekee myös huoltoja rovaniemen alueella.",lat:66.5039,lng:25.7294},
+{id:204,name:"Lari Korhonen / Valttilämpö Oy",address:"Markuksenkuja 6, 91800 Tyrnävä",type:"reseller",services:["LVI","SÄHKÖMIES","VILP Sähkö","Putki VILP + KV/LV","ILP","KYLMÄ Alle 3.kg","Huolto"],phone:"045 3568881",notes:"Mahdollisuus isoon yhteistyöhön. Juuri käynnistetty yritys jonka tavoitteena tehdä VILP/MLP/PILP markkinassa bisnestä.",lat:64.7663,lng:25.6643},
+{id:205,name:"Ari Aatsa Koskela / Ekalux Oy",address:"Hongisojantie 395, 01900 Nurmijärvi",type:"reseller",services:["SÄHKÖMIES","VILP Sähkö","Huolto"],phone:"044 9750814",notes:"Tekee sähköasennusta, ei kylmälupia. Tehnyt paljon aurinkosähköhommia.",lat:60.4682,lng:24.8041},
+{id:206,name:"Tino Toivanen / Jokita Oy",address:"Höylätie 4, 19650 Joutsa",type:"reseller",services:["KIINTEISTÖ HUOLTO"],phone:"040 861 6499",notes:"Tekevät huoltoa joutsan alueella. 24/7 Päivystysnumero 0400 649 416",lat:61.7442,lng:26.1106},
+{id:207,name:"Miika Kivelä / Valoisat Oy",address:"Valmetinkatu 12 B 47, 33900 Tampere",type:"reseller",services:["SÄHKÖMIES","VILP Sähkö","ILP","KYLMÄ Alle 3.kg","Huolto"],phone:"050 5510234",notes:"Tehnyt paljon meille hommaa. Sähkäri. Myy vuositasolla muutamia vilppejä.",lat:61.4978,lng:23.761},
+{id:208,name:"Jens Nyback / F:ma Jens Nyback",address:"Dragsfjärdsvägen 345, 25700 Kemiö",type:"reseller",services:["LVI","SÄHKÖMIES","VILP Sähkö","Putki VILP + KV/LV","ILP","KYLMÄ Alle 3.kg","Huolto"],phone:"040 753 6390",notes:"Tekee huoltoa kemiönsaaren alueella. Saaristoon hyvä tekijä.",lat:60.1833,lng:22.7333},
+{id:209,name:"Aleksi Suodenjoki / Jemimar Oy",address:"Salontie 6, 66400 Laihia",type:"reseller",services:["LVI","SÄHKÖMIES","VILP Sähkö","Putki VILP + KV/LV","ILP","KYLMÄ Alle 3.kg","KYLMÄ YLI 3.kg","Huolto"],phone:"040 768 3884",notes:"Bookattu 27.3.2026 klo 12:00. Katsotaan yhteistyö palaverissa.",lat:62.9755,lng:22.0123}
+];
+// ── STATE ─────────────────────────────────────────────────────
+let dealers=[],dMarkers={},selId=null,dType='all',dFilters=new Set();
+let kohteetData=[],kMarkers=[],mapD,mapK;
+let editId=null,modalType='installer';
+
+// ── UTILS ─────────────────────────────────────────────────────
+function normCity(s){if(!s)return'';const l=s.trim().toLowerCase();if(ALI[l])return ALI[l];return l.charAt(0).toUpperCase()+l.slice(1);}
 // ── GEOCODING (Nominatim + Supabase cache) ────────────────────
 var GEO_CACHE={};   // address_key -> [lat,lng] (in-memory)
 var GEO_QUEUE=[];
@@ -853,6 +885,8 @@ function handleKohteetFile(inp){
 }
 // Also support drag/drop on the kohteet page
 document.addEventListener('DOMContentLoaded',()=>{
+  loadGeoCache();
+
   const pg=document.getElementById('page-kohteet');
   pg.addEventListener('dragover',e=>{e.preventDefault();});
   pg.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f&&f.name.match(/\.xlsx?$/i)){
@@ -917,15 +951,7 @@ function processKohteet(file){
       kohteetData=parsed;
       const total=parsed.length;
 
-      // ── Populate filters & render immediately with whatever coords we have ──
-      const asentajaSet=new Set();kohteetData.forEach(r=>{if(r.asentajat)r.asentajat.split(',').forEach(a=>{const t=a.trim();if(t)asentajaSet.add(t);});});
-      populateSel('f-asentaja',[...asentajaSet].sort(),'Kaikki');
-      const myyjaSet=new Set();kohteetData.forEach(r=>{if(r.myyja)myyjaSet.add(r.myyja);});
-      populateSel('f-myyja',[...myyjaSet].sort(),'Kaikki');
-      const yrs=[...new Set(kohteetData.map(r=>{const d=parseDate(r.kalenteri);return d?d.getFullYear():null;}).filter(Boolean))].sort();
-      populateSel('f-year',yrs,'Kaikki');
-      const fYear=document.getElementById('f-year');
-      if(fYear&&[...fYear.options].some(o=>o.value==='2026'))fYear.value='2026';
+      // Render immediately with cached coords, geocode rest in background
       applyKohteet();
       setUploadStatus('✓ '+total+' riviä · ladattu','');
       showToast('✓ '+total+' riviä ladattu');
